@@ -47,18 +47,18 @@ void loop() {
   now = millis(); // The time that distNow was measured.
 
   // Print distances and times:
-  Serial.print("distPrev: "); Serial.print(distPrev);  Serial.print("\t");
-  Serial.print("Distance value: ");  Serial.print(distNow);  Serial.print("\t");
-  Serial.print("now: "); Serial.print(now);  Serial.print("\t");
-  Serial.print("before: "); Serial.print(before);  Serial.print("\t");
+  Serial.print("distPrev: "); Serial.print(distPrev);  Serial.print("cm\t");
+  Serial.print("Distance value: ");  Serial.print(distNow);  Serial.print("cm\t");
+  Serial.print("now: "); Serial.print(now);  Serial.print("ms\t");
+  Serial.print("before: "); Serial.print(before);  Serial.print("ms\t");
 
   // Calulate velocity:
   elapsed = now - before; // Time elapsed between previous read (distPrev) and this read (distNow) -- for velocity calculation
-  velocity = ((float)(distPrev - distNow)) / ((float)elapsed); // If the velocity is POSITIVE, then something is coming closer from behind (ignore negatives)
-
+  velocity = (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
+  // Note: If the velocity is POSITIVE, then something is coming closer from behind (if negative, then something's moving away)
   // Print elapsed time and velocity:
-  Serial.print("elapsed: "); Serial.print(elapsed);  Serial.print("\t");
-  Serial.print("velocity: "); Serial.print(velocity);  Serial.print("\n");
+  Serial.print("elapsed: "); Serial.print(elapsed);  Serial.print("ms\t");
+  Serial.print("velocity: "); Serial.print(velocity);  Serial.print("m/s\n");
 
 
   // Update values for next loop:
