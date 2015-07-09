@@ -1,8 +1,10 @@
 /*
-http://pulsedlight3d.com
-This sketch demonstrates getting distance with the LIDAR-Lite Sensor
-It utilizes the 'Arduino I2C Master Library' from DSS Circuits.
-*/
+ * This sketch recieves distance values from a LIDAR-Lite Sensor, converts these values 
+ * to velocities, and outputs these values to the serial monitor.
+ * 
+ * It utilizes the 'Arduino I2C Master Library' from DSS Circuits.
+ * Also see: https://github.com/PulsedLight3D/LIDARLite_Basics
+ */
 
 #include <I2C.h>
 #define    LIDARLite_ADDRESS   0x62          // Default I2C Address of LIDAR-Lite.
