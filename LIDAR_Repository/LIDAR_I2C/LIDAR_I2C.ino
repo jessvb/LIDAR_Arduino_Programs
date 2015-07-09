@@ -1,7 +1,7 @@
 /*
- * This sketch recieves distance values from a LIDAR-Lite Sensor, converts these values 
+ * This sketch recieves distance values from a LIDAR-Lite Sensor, converts these values
  * to velocities, and outputs these values to the serial monitor.
- * 
+ *
  * It utilizes the 'Arduino I2C Master Library' from DSS Circuits.
  * Also see: https://github.com/PulsedLight3D/LIDARLite_Basics
  */
@@ -48,24 +48,21 @@ void loop() {
   distNow = (distanceArray[0] << 8) + distanceArray[1];  // Shift high byte [0] 8 to the left and add low byte [1] to create 16-bit int
   now = millis(); // The time that distNow was measured.
 
-  // Print distances and times:
-  Serial.print("distPrev: "); Serial.print(distPrev);  Serial.print("cm\t");
-  Serial.print("Distance value: ");  Serial.print(distNow);  Serial.print("cm\t");
-  Serial.print("now: "); Serial.print(now);  Serial.print("ms\t");
-  Serial.print("before: "); Serial.print(before);  Serial.print("ms\t");
-
   // Calulate velocity:
   elapsed = now - before; // Time elapsed between previous read (distPrev) and this read (distNow) -- for velocity calculation
   velocity = (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
   // Note: If the velocity is POSITIVE, then something is coming closer from behind (if negative, then something's moving away)
   // Print elapsed time and velocity:
-  Serial.print("elapsed: "); Serial.print(elapsed);  Serial.print("ms\t");
-  Serial.print("velocity: "); Serial.print(velocity);  Serial.print("m/s\n");
 
+  // Print distances and a newline to communicate with Processing:
+  //Serial.println(distNow);
+
+  // Print velocities and a newline to communicate with Processing:
+  Serial.println(velocity);
 
   // Update values for next loop:
   before = now;
   distPrev = distNow;
-  delay(1000);
+  delay(10);
 }
 
