@@ -13,6 +13,8 @@ XYChart lineChart;              // An x-y graph from the GiCentre Library
 ArrayList<PVector> velocities;  // List of x & y values (time and velocity)
 float initialTime = System.nanoTime()/1E9; // Time when program starts
 final int POINTS_ON_SCREEN = 150;  // The maximum number of data points on screen
+int counter = 0;                // Counter for taking average velocity values
+int avgVel = 0;                 // Average velocity for last 5 data points
 
 void setup () {
   //---------- CHART SETUP ----------//
@@ -70,11 +72,23 @@ void serialEvent (Serial myPort) {
     // convert to an int:
     float inByte = float(inString);
 
-    // add new value to velocity list:
-    velocities.add(new PVector(System.nanoTime()/1E9 - initialTime, inByte));
-    if (velocities.size() > POINTS_ON_SCREEN) { // Remove values from list if more than max
-      velocities.remove(0);
+
+    //---------- TAKE AVERAGE VELOCITY ----------//
+    counter++; // another data point was taken
+    avgVel += inByte; // add the new data to the avgVel variable
+
+      // if 5 data points have been collected, take the average:
+    if (counter >= 5) {
+      avgVel = avgVel/counter;
+
+      // add averaged value to velocity list:
+      velocities.add(new PVector(System.nanoTime()/1E9 - initialTime, avgVel));
+      if (velocities.size() > POINTS_ON_SCREEN) { // Remove values from list if more than max
+        velocities.remove(0);
+      }
+      counter = 0;
     }
+
 
     //---------- DRAW GRAPH ----------//
     background(255); // set background colour to white
@@ -87,11 +101,11 @@ void serialEvent (Serial myPort) {
     textSize(20);
     text("LIDAR Velocity Readings", 70, 30);
 
-    try {
-      Thread.sleep(100); // sleep 100 milliseconds
-    } 
-    catch(InterruptedException ex) {
-    }
+//    try {
+//      Thread.sleep(100); // sleep 100 milliseconds
+//    } 
+//    catch(InterruptedException ex) {
+//    }
   }
 }
 
