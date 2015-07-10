@@ -100,12 +100,6 @@ void serialEvent (Serial myPort) {
     fill(120);
     textSize(20);
     text("LIDAR Velocity Readings", 70, 30);
-
-//    try {
-//      Thread.sleep(100); // sleep 100 milliseconds
-//    } 
-//    catch(InterruptedException ex) {
-//    }
   }
 }
 
