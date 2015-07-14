@@ -28,6 +28,7 @@ void setup() {
 }
 
 void loop() {
+  //---------- GET DISTANCE ---------//
   // Write 0x04 to register 0x00
   uint8_t nackack = 100; // Setup variable to hold ACK/NACK resopnses
   while (nackack != 0) { // While NACK keep going (i.e. continue polling until sucess message (ACK) is received )
@@ -48,7 +49,7 @@ void loop() {
   distNow = (distanceArray[0] << 8) + distanceArray[1];  // Shift high byte [0] 8 to the left and add low byte [1] to create 16-bit int
   now = millis(); // The time that distNow was measured.
 
-  // Calulate velocity:
+  //---------- CALCULATE VELOCITY ----------//
   elapsed = now - before; // Time elapsed between previous read (distPrev) and this read (distNow) -- for velocity calculation
   velocity = (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
   // Note: If the velocity is POSITIVE, then something is coming closer from behind (if negative, then something's moving away)
