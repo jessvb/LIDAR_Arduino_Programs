@@ -17,8 +17,9 @@ unsigned long now = 0; // The current time -> when a distNow is measured.
 int distPrev = 9999999; // The previous distance value measured.
 unsigned long before = 0; // The previous time a distance value was measured.
 unsigned long elapsed = 0; // The time elapsed between measuring distPrev and distNow.
-float velocity = 0; // The velocity value.
-
+float avgVel = 0; // The average velocity for last couple of distances
+int counter = 0; // Counter for taking average velocity values
+const short AVG_COUNT = 5; // Number of data points that are averaged each loop
 
 void setup() {
   Serial.begin(9600); //Opens serial connection at 9600bps.
@@ -49,17 +50,19 @@ void loop() {
   distNow = (distanceArray[0] << 8) + distanceArray[1];  // Shift high byte [0] 8 to the left and add low byte [1] to create 16-bit int
   now = millis(); // The time that distNow was measured.
 
-  //---------- CALCULATE VELOCITY ----------//
+  //---------- CALCULATE AVERAGE VELOCITY ----------//
   elapsed = now - before; // Time elapsed between previous read (distPrev) and this read (distNow) -- for velocity calculation
-  velocity = (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
+  // Calculate velocity and add it to avgVel:
+  avgVel += (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
   // Note: If the velocity is POSITIVE, then something is coming closer from behind (if negative, then something's moving away)
-  // Print elapsed time and velocity:
 
-  // Print distances and a newline to communicate with Processing:
-  //Serial.println(distNow);
-
-  // Print velocities and a newline to communicate with Processing:
-  Serial.println(velocity);
+  counter++; // Another velocity has been added to avgVel
+  // if AVG_COUNT data points have been collected, take the average:
+  if (counter >= AVG_COUNT) {
+    avgVel = avgVel / ((float)counter); // Calculate average
+    Serial.println(avgVel); // Print velocities with a newline to communicate with Processing
+    counter = 0; // Reset the counter
+  }
 
   // Update values for next loop:
   before = now;
