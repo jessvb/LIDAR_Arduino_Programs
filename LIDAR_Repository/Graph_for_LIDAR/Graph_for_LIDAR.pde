@@ -14,15 +14,15 @@ ArrayList<PVector> velocities;  // List of x & y values (time and velocity)
 float initialTime = System.nanoTime()/1E9; // Time when program starts
 final int POINTS_ON_SCREEN = 150;  // The maximum number of data points on screen
 int counter = 0;                // Counter for taking average velocity values
-float avgVel = 0;                 // Average velocity for last couple of data points
+float avgVel = 0;               // Average velocity for last couple of data points
 final int AVG_COUNT = 5;        // Number of data points that are averaged
 
 void setup () {
   //---------- CHART SETUP ----------//
   // set the window size:
-  size(400, 300);
+  size(800, 600);
 
-  // set the font for the graph:
+  // set the font for the graph labels:
   textFont(createFont("Arial", 10), 10);
 
   // create a new x-y chart object:
@@ -93,14 +93,14 @@ void serialEvent (Serial myPort) {
 
     //---------- DRAW GRAPH ----------//
     background(255); // set background colour to white
-    textSize(10); // For the axis lables
+    textSize(11); // For the axis lables
     lineChart.setData(velocities); // set the chart data
     lineChart.draw(15, 15, width-30, height-30);
 
     // draw title over the graph (after graph has been drawn):
     fill(120);
-    textSize(20);
-    text("LIDAR Velocity Readings", 70, 30);
+    textSize(40);
+    text("LIDAR Velocity Readings", 90, 50);
   }
 }
 
