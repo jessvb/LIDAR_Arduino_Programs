@@ -14,7 +14,8 @@ ArrayList<PVector> velocities;  // List of x & y values (time and velocity)
 float initialTime = System.nanoTime()/1E9; // Time when program starts
 final int POINTS_ON_SCREEN = 150;  // The maximum number of data points on screen
 int counter = 0;                // Counter for taking average velocity values
-int avgVel = 0;                 // Average velocity for last 5 data points
+float avgVel = 0;                 // Average velocity for last couple of data points
+final int AVG_COUNT = 5;        // Number of data points that are averaged
 
 void setup () {
   //---------- CHART SETUP ----------//
@@ -77,9 +78,9 @@ void serialEvent (Serial myPort) {
     counter++; // another data point was taken
     avgVel += inByte; // add the new data to the avgVel variable
 
-      // if 5 data points have been collected, take the average:
-    if (counter >= 5) {
-      avgVel = avgVel/counter;
+      // if AVG_COUNT data points have been collected, take the average:
+    if (counter >= AVG_COUNT) {
+      avgVel = avgVel/((float)counter);
 
       // add averaged value to velocity list:
       velocities.add(new PVector(System.nanoTime()/1E9 - initialTime, avgVel));
