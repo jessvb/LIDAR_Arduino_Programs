@@ -21,11 +21,19 @@ float avgVel = 0; // The average velocity for last couple of distances
 int counter = 0; // Counter for taking average velocity values
 const short AVG_COUNT = 5; // Number of data points that are averaged each loop
 
+int fanPin = 3; // PWM pin for the fan is pin #3
+// Map the fanPin from PWM_MIN (when the fan just starts to spin) to PWM_MAX (255)
+const int PWM_MIN = 108; // The lowest possible number sent to the fanPin (fan doesn't spin here)
+const int PWM_MAX = 255; // The highest possible number sent to the fanPin
+const float FAN_MIN = 0.3; // The lowest possible velocity required to send to the fanPin
+const float FAN_MAX = 3; // The highest possible velocity to be sent to the fanPin
+
 void setup() {
   Serial.begin(9600); //Opens serial connection at 9600bps.
   I2c.begin(); // Opens & joins the irc bus as master
   delay(100); // Waits to make sure everything is powered up before sending or receiving data
   I2c.timeOut(50); // Sets a timeout to ensure no locking up of sketch if I2C communication fails
+  analogWrite(fanPin, 0); // Set the fan to not spin
 }
 
 void loop() {
@@ -62,6 +70,15 @@ void loop() {
     avgVel = avgVel / ((float)counter); // Calculate average
     Serial.println(avgVel); // Print velocities with a newline to communicate with Processing
     counter = 0; // Reset the counter
+
+    //---------- ADJUST FAN SPEED ----------//
+    if (avgVel < FAN_MIN) { // Velocity less than the minimum
+      analogWrite(fanPin, 0); // Bottomed out
+    } else if (avgVel > FAN_MAX) { // Velocity more than the maximum
+      analogWrite(fanPin, 255); // Maxed out
+    } else {
+      analogWrite(fanPin, map(avgVel, FAN_MIN, FAN_MAX, PWM_MIN, PWM_MAX)); // Within range
+    }
   }
 
   // Update values for next loop:
