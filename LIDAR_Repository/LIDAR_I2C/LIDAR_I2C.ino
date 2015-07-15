@@ -25,8 +25,8 @@ int fanPin = 3; // PWM pin for the fan is pin #3
 // Map the fanPin from PWM_MIN (when the fan just starts to spin) to PWM_MAX (255)
 const int PWM_MIN = 108; // The lowest possible number sent to the fanPin (fan doesn't spin here)
 const int PWM_MAX = 255; // The highest possible number sent to the fanPin
-const float FAN_MIN = 0.3; // The lowest possible velocity required to send to the fanPin
-const float FAN_MAX = 3; // The highest possible velocity to be sent to the fanPin
+const float VEL_MIN = 0.3; // The lowest possible velocity required to send voltage to the fanPin
+const float VEL_MAX = 3; // The velocity that maxes out the voltage sent to the fanPin
 
 void setup() {
   Serial.begin(9600); //Opens serial connection at 9600bps.
@@ -72,12 +72,12 @@ void loop() {
     counter = 0; // Reset the counter
 
     //---------- ADJUST FAN SPEED ----------//
-    if (avgVel < FAN_MIN) { // Velocity less than the minimum
+    if (avgVel < VEL_MIN) { // Velocity less than the minimum
       analogWrite(fanPin, 0); // Bottomed out
-    } else if (avgVel > FAN_MAX) { // Velocity more than the maximum
+    } else if (avgVel > VEL_MAX) { // Velocity more than the maximum
       analogWrite(fanPin, 255); // Maxed out
     } else {
-      analogWrite(fanPin, map(avgVel, FAN_MIN, FAN_MAX, PWM_MIN, PWM_MAX)); // Within range
+      analogWrite(fanPin, map(avgVel, VEL_MIN, VEL_MAX, PWM_MIN, PWM_MAX)); // Within range
     }
   }
 
