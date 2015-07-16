@@ -18,7 +18,8 @@ int distPrev = 9999999; // The previous distance value measured.
 unsigned long before = 0; // The previous time a distance value was measured.
 unsigned long elapsed = 0; // The time elapsed between measuring distPrev and distNow.
 float avgVel = 0; // The average velocity for last couple of distances
-int counter = 0; // Counter for taking average velocity values
+float avgDist = 0; // The average distance for last couple data points
+int counter = 0; // Counter for taking averages
 const short AVG_COUNT = 5; // Number of data points that are averaged each loop
 
 int fanPin = 3; // PWM pin for the fan is pin #3
@@ -58,17 +59,22 @@ void loop() {
   distNow = (distanceArray[0] << 8) + distanceArray[1];  // Shift high byte [0] 8 to the left and add low byte [1] to create 16-bit int
   now = millis(); // The time that distNow was measured.
 
-  //---------- CALCULATE AVERAGE VELOCITY ----------//
+  //---------- CALCULATE AVERAGE VELOCITY & DISTANCE ----------//
   elapsed = now - before; // Time elapsed between previous read (distPrev) and this read (distNow) -- for velocity calculation
   // Calculate velocity and add it to avgVel:
   avgVel += (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
   // Note: If the velocity is POSITIVE, then something is coming closer from behind (if negative, then something's moving away)
+  avgDist += distNow;
 
-  counter++; // Another velocity has been added to avgVel
+  counter++; // Another velocity/dist has been added to avgVel/avgDist
   // if AVG_COUNT data points have been collected, take the average:
   if (counter >= AVG_COUNT) {
-    avgVel = avgVel / ((float)counter); // Calculate average
-    Serial.println(avgVel); // Print velocities with a newline to communicate with Processing
+    avgVel = avgVel / ((float)counter); // Calculate average velocity
+    avgDist = avgDist / ((float)counter); // Calculate average distance
+    // Print velocities with a V and newline to communicate with Processing
+    Serial.print(avgVel); Serial.print('V');
+    // Print distances with a D and newline to communicate with Processing
+    Serial.print(avgDist); Serial.println('D');
     counter = 0; // Reset the counter
 
     //---------- ADJUST FAN SPEED ----------//

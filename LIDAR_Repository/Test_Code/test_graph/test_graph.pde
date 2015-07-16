@@ -41,17 +41,22 @@ void setup()
   // Axis formatting and labels.
   velChart.showXAxis(true); 
   velChart.showYAxis(true); 
+  velChart.setXAxisLabel("Time (s)");
+  velChart.setYAxisLabel("Velocity (m/s)");
   velChart.setYFormat("###.#### m/s");  // Velocity in m/s
   velChart.setXFormat("###.#### s");      // Time in sec
 
   distChart.showXAxis(false); 
   distChart.showYAxis(true);
+  distChart.setYAxisLabel("Distance (m)");
+  distChart.setXAxisLabel("Time (s)");
   distChart.setYAxisAt(velChart.getMaxX());
   distChart.setYFormat("###.#### m");  // Distance in m
   distChart.setXFormat("###.#### s");      // Time in sec
+  distChart.setMinY(0);
 
   // Symbol colours
-  velChart.setPointColour(color(180, 50, 50, 100));
+  velChart.setPointColour(color(180, 50, 50, 50));
   velChart.setPointSize(5);
   velChart.setLineWidth(2);
 
@@ -66,7 +71,9 @@ void draw()
   background(255); // White BG
   textSize(11); // For the axis lables
   velChart.draw(15, 15, width-30, height-30); // Draw the chart
+  fill(100, 111, 111);
   distChart.draw(15, 15, width-30, height-30); // Draw the chart
+  fill(100, 111, 111);
 
   // Draw a title over the top of the chart.
   fill(120);
@@ -81,7 +88,7 @@ void draw()
   }
 
   velocities.add(new PVector(System.nanoTime()/1E9 - firstTime, 10));
-  distances.add(new PVector(System.nanoTime()/1E9 - firstTime, -3.0));
+  distances.add(new PVector(System.nanoTime()/1E9 - firstTime, 5));
   if (velocities.size() > 50) {
     velocities.remove(0);
     distances.remove(0);
