@@ -1,5 +1,5 @@
 int pwPin = 5; // PW input on pin 5
-long distMM;
+float distCM;
 
 void setup() {
   Serial.begin(9600);
@@ -8,8 +8,8 @@ void setup() {
 
 void loop() {
   // ------- READ ULTRASONIC ------- //
-  distMM = pulseIn(pwPin, HIGH); // Distance in mm
-  Serial.print("Distance in mm: ");
-  Serial.println(distMM);
-  delay(10);
+  distCM = (pulseIn(pwPin, HIGH))/147*2.54; // pulse/147*2.54 to cm
+  Serial.print("PW dist (cm): ");
+  Serial.println(distCM);
+  delay(100);
 }
