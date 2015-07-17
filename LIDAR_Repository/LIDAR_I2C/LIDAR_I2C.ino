@@ -33,8 +33,10 @@ int ultraPinRight = 5; // PW input for the right ultrasonic
 int LEDPinRight = 10; // PW output for the right LED
 int ultraPinLeft = 6; // PW input for the left ultrasonic
 int LEDPinLeft = 9; // PW output for the left LED
-#define MIN_ULTRA_DIST 12.7
-#define MAX_ULTRA_DIST 100.0
+float avgDistRight = 0; // The average distance for last couple data points
+float avgDistLeft = 0; // The average distance for last couple data points
+#define MIN_ULTRA_DIST 12.7 // The minimum distance in cm to light the LED to its max
+#define MAX_ULTRA_DIST 100.0 // The minimum distance in cm to just light the LED
 
 void setup() {
   Serial.begin(9600); // Open serial connection at 9600bps
@@ -70,18 +72,17 @@ void loop() {
   distNow = (distanceArray[0] << 8) + distanceArray[1];  // Shift high byte [0] 8 to the left and add low byte [1] to create 16-bit int
   now = millis(); // The time that distNow was measured.
 
-  // Get ultrasonic distances:
-  float distLeft = (float)(pulseIn(ultraPinLeft, HIGH)) / 147 * 2.54; // Convert to cm: pulse/147*2.54 = cm
-  float distRight = (float)(pulseIn(ultraPinRight, HIGH)) / 147 * 2.54;
-
   //---------- CALCULATE AVERAGE VELOCITY & DISTANCE ----------//
   elapsed = now - before; // Time elapsed between previous read (distPrev) and this read (distNow) -- for velocity calculation
   // Calculate velocity and add it to avgVel:
   avgVel += (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
   // Note: If the velocity is POSITIVE, then something is coming closer from behind (if negative, then something's moving away)
   avgDist += distNow;
+  // Get ultrasonic distances:
+  avgDistLeft += (float)(pulseIn(ultraPinLeft, HIGH)) / 147 * 2.54; // Convert to cm: pulse/147*2.54 = cm
+  avgDistRight += (float)(pulseIn(ultraPinRight, HIGH)) / 147 * 2.54;
 
-  counter++; // Another velocity/dist has been added to avgVel/avgDist
+  counter++; // One more data point collected for each distance/velocity
   // if AVG_COUNT data points have been collected, take the average:
   if (counter >= AVG_COUNT) {
     avgVel = avgVel / ((float)counter); // Calculate average velocity
@@ -90,6 +91,10 @@ void loop() {
     Serial.print(avgVel); Serial.print('V');
     // Print distances with a D and newline to communicate with Processing
     Serial.print(avgDist); Serial.println('D');
+    // Ultrasonic averages:
+    avgDistLeft = avgDistLeft / ((float)counter);
+    avgDistRight = avgDistRight / ((float)counter);
+
     counter = 0; // Reset the counter
 
     //---------- ADJUST FAN SPEED & LED FADE ----------//
@@ -101,10 +106,10 @@ void loop() {
     } else {
       analogWrite(fanPin, map(avgVel, VEL_MIN, VEL_MAX, PWM_MIN, PWM_MAX)); // Within range
     }
+    // LED fade:
+    writeLED(LEDPinRight, avgDistRight);
+    writeLED(LEDPinLeft, avgDistLeft);
   }
-  // LED fade:
-  writeLED(LEDPinRight, distRight);
-  writeLED(LEDPinLeft, distLeft);
 
 
   //---------- UPDATE VALUES FOR NEXT LOOP ----------//
