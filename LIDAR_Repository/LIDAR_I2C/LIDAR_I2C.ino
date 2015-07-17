@@ -29,11 +29,22 @@ const int PWM_MAX = 255; // The highest possible number sent to the fanPin
 const float VEL_MIN = 0.3; // The lowest possible velocity required to send voltage to the fanPin
 const float VEL_MAX = 3; // The velocity that maxes out the voltage sent to the fanPin
 
+int ultraPinRight = 5; // PW input for the right ultrasonic
+int LEDPinRight = 10; // PW output for the right LED
+int ultraPinLeft = 6; // PW input for the left ultrasonic
+int LEDPinLeft = 9; // PW output for the left LED
+#define MIN_ULTRA_DIST 12.7
+#define MAX_ULTRA_DIST 100.0
+
 void setup() {
-  Serial.begin(9600); //Opens serial connection at 9600bps.
-  I2c.begin(); // Opens & joins the irc bus as master
-  delay(100); // Waits to make sure everything is powered up before sending or receiving data
-  I2c.timeOut(50); // Sets a timeout to ensure no locking up of sketch if I2C communication fails
+  Serial.begin(9600); // Open serial connection at 9600bps
+  pinMode(ultraPinRight, INPUT);
+  pinMode(ultraPinLeft, INPUT);
+  pinMode(LEDPinRight, OUTPUT);
+  pinMode(LEDPinLeft, OUTPUT);
+  I2c.begin(); // Open & join the irc bus as master
+  delay(100); // Wait to make sure everything is powered up before sending or receiving data
+  I2c.timeOut(50); // Set a timeout to ensure no locking up of sketch if I2C communication fails
   analogWrite(fanPin, 0); // Set the fan to not spin
 }
 
@@ -59,6 +70,10 @@ void loop() {
   distNow = (distanceArray[0] << 8) + distanceArray[1];  // Shift high byte [0] 8 to the left and add low byte [1] to create 16-bit int
   now = millis(); // The time that distNow was measured.
 
+  // Get ultrasonic distances:
+  float distLeft = (float)(pulseIn(ultraPinLeft, HIGH)) / 147 * 2.54; // Convert to cm: pulse/147*2.54 = cm
+  float distRight = (float)(pulseIn(ultraPinRight, HIGH)) / 147 * 2.54;
+
   //---------- CALCULATE AVERAGE VELOCITY & DISTANCE ----------//
   elapsed = now - before; // Time elapsed between previous read (distPrev) and this read (distNow) -- for velocity calculation
   // Calculate velocity and add it to avgVel:
@@ -77,7 +92,8 @@ void loop() {
     Serial.print(avgDist); Serial.println('D');
     counter = 0; // Reset the counter
 
-    //---------- ADJUST FAN SPEED ----------//
+    //---------- ADJUST FAN SPEED & LED FADE ----------//
+    // Fan speed:
     if (avgVel < VEL_MIN) { // Velocity less than the minimum
       analogWrite(fanPin, 0); // Bottomed out
     } else if (avgVel > VEL_MAX) { // Velocity more than the maximum
@@ -86,10 +102,29 @@ void loop() {
       analogWrite(fanPin, map(avgVel, VEL_MIN, VEL_MAX, PWM_MIN, PWM_MAX)); // Within range
     }
   }
+  // LED fade:
+  writeLED(LEDPinRight, distRight);
+  writeLED(LEDPinLeft, distLeft);
 
-  // Update values for next loop:
+
+  //---------- UPDATE VALUES FOR NEXT LOOP ----------//
   before = now;
   distPrev = distNow;
   delay(10);
 }
 
+/* Changes the intensity of the LED based on the distance provided */
+void writeLED (int ledPin, float dist) {
+  if (dist <= MIN_ULTRA_DIST) {
+    // If very close, light the LED to its maximum
+    analogWrite(ledPin, 255);
+  } else if (dist >= MAX_ULTRA_DIST) {
+    // If far away, don't light the LED
+    analogWrite(ledPin, 0);
+  } else {
+    // If in between max & min distance, map the light intensity
+    // between 0 and 150 (difficult to see difference between
+    // 150<->255, thus the gradient is better between 0<->150)
+    analogWrite(ledPin, map(dist, MIN_ULTRA_DIST, MAX_ULTRA_DIST, 150, 0));
+  }
+}
