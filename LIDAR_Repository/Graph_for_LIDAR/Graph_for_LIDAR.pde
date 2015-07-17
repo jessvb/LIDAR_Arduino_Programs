@@ -19,7 +19,7 @@ final int POINTS_ON_SCREEN = 150;  // The maximum number of data points on scree
 void setup () {
   //---------- CHART SETUP ----------//
   // set the window size:
-  size(800, 600);
+  size(1600, 600);
 
   // set the font for the graph labels:
   textFont(createFont("Arial", 10), 10);
@@ -36,11 +36,10 @@ void setup () {
   velChart.setMaxY(3);
   velChart.setMinY(-3);
 
-  distChart.showXAxis(false);
+  distChart.showXAxis(true);
   distChart.showYAxis(true);
   distChart.setYFormat("###.#### m");  // Distance in m
   distChart.setXFormat("###.#### s");      // Time in seconds
-  distChart.setYAxisAt(velChart.getMaxX()); // Move the distance axis to the right side
   distChart.setMinY(0);
 
   // symbol colours:
@@ -49,8 +48,8 @@ void setup () {
   velChart.setLineWidth(2);
 
   distChart.setPointColour(color(180, 50, 50, 100));
-  distChart.setPointSize(4);
-  distChart.setLineWidth(1);
+  distChart.setPointSize(5);
+  distChart.setLineWidth(2);
 
   background(255); // set background colour to white
 
@@ -101,15 +100,15 @@ void serialEvent (Serial myPort) {
     background(255); // set background colour to white
     textSize(11); // For the axis lables
     velChart.setData(velocities); // set the chart data with the arrayList
-    velChart.draw(15, 15, width-30, height-30);
+    velChart.draw(15, 15, width-830, height-30);
     distChart.setData(distances); // set the chart data with the arrayList
-    distChart.setYAxisAt(velChart.getMaxX()); // Move the distance axis to the right side
-    distChart.draw(15, 15, width-30, height-30);
+    distChart.draw(815, 15, width-830, height-30);
 
     // draw title over the graph (after graph has been drawn):
     fill(120);
-    textSize(40);
-    text("LIDAR Velocity & Distance Readings", 90, 50);
+    textSize(20);
+    text("LIDAR Velocity Readings", 90, 50);
+    text("LIDAR Distance Readings", 90+800, 50); 
   }
 }
 

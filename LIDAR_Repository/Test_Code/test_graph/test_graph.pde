@@ -12,7 +12,7 @@ float firstTime = System.nanoTime()/1E9;
 // Loads data into the chart and customises its appearance.
 void setup()
 {
-  size(800, 600);
+  size(1600, 600);
   textFont(createFont("Arial", 10), 10);
 
   // Both x and y data set here.  
@@ -46,11 +46,10 @@ void setup()
   velChart.setYFormat("###.#### m/s");  // Velocity in m/s
   velChart.setXFormat("###.#### s");      // Time in sec
 
-  distChart.showXAxis(false); 
+  distChart.showXAxis(true); 
   distChart.showYAxis(true);
   distChart.setYAxisLabel("Distance (m)");
   distChart.setXAxisLabel("Time (s)");
-  distChart.setYAxisAt(velChart.getMaxX());
   distChart.setYFormat("###.#### m");  // Distance in m
   distChart.setXFormat("###.#### s");      // Time in sec
   distChart.setMinY(0);
@@ -70,16 +69,17 @@ void draw()
 {
   background(255); // White BG
   textSize(11); // For the axis lables
-  velChart.draw(15, 15, width-30, height-30); // Draw the chart
+  velChart.draw(15, 15, width-30-800, height-30); // Draw the chart
   fill(100, 111, 111);
-  distChart.draw(15, 15, width-30, height-30); // Draw the chart
+  distChart.draw(15+800, 15, width-30-800, height-30); // Draw the chart
   fill(100, 111, 111);
 
   // Draw a title over the top of the chart.
   fill(120);
   textSize(20);
   text("LIDAR Velocity Readings", 90, 50);
-
+  text("LIDAR Distance Readings", 90+800, 50);
+  
   try {
     Thread.sleep(100);                 // sleep 100 milliseconds
   } 
@@ -95,6 +95,5 @@ void draw()
   }
   velChart.setData(velocities);
   distChart.setData(distances);
-  distChart.setYAxisAt(velChart.getMaxX());
 }
 
