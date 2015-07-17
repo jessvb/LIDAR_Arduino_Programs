@@ -17,8 +17,8 @@ unsigned long now = 0; // The current time -> when a distNow is measured.
 int distPrev = 9999999; // The previous distance value measured.
 unsigned long before = 0; // The previous time a distance value was measured.
 unsigned long elapsed = 0; // The time elapsed between measuring distPrev and distNow.
-float avgVel = 0; // The average velocity for last couple of distances
-float avgDist = 0; // The average distance for last couple data points
+float totalVel = 0; // The last couple velocity values combined (used to take an average)
+float totalDist = 0; // The last couple distance values combined (used to take an average)
 int counter = 0; // Counter for taking averages
 const short AVG_COUNT = 5; // Number of data points that are averaged each loop
 
@@ -33,8 +33,8 @@ int ultraPinRight = 5; // PW input for the right ultrasonic
 int LEDPinRight = 10; // PW output for the right LED
 int ultraPinLeft = 6; // PW input for the left ultrasonic
 int LEDPinLeft = 9; // PW output for the left LED
-float avgDistRight = 0; // The average distance for last couple data points
-float avgDistLeft = 0; // The average distance for last couple data points
+float totalDistRight = 0; // The last couple distance values combined (used to take an average)
+float totalDistLeft = 0; // The last couple distance values combined (used to take an average)
 #define MIN_ULTRA_DIST 12.7 // The minimum distance in cm to light the LED to its max
 #define MAX_ULTRA_DIST 100.0 // The minimum distance in cm to just light the LED
 
@@ -50,6 +50,9 @@ void setup() {
   analogWrite(fanPin, 0); // Set the fan to not spin
 }
 
+/* ----------------------------------------------------
+ * ----------------------- MAIN -----------------------
+ * ---------------------------------------------------- */
 void loop() {
   //---------- GET DISTANCE ---------//
   // Write 0x04 to register 0x00
@@ -74,41 +77,36 @@ void loop() {
 
   //---------- CALCULATE AVERAGE VELOCITY & DISTANCE ----------//
   elapsed = now - before; // Time elapsed between previous read (distPrev) and this read (distNow) -- for velocity calculation
-  // Calculate velocity and add it to avgVel:
-  avgVel += (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
+  // Calculate velocity and add it to totalVel:
+  totalVel += (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
   // Note: If the velocity is POSITIVE, then something is coming closer from behind (if negative, then something's moving away)
-  avgDist += distNow;
+  totalDist += distNow;
   // Get ultrasonic distances:
-  avgDistLeft += (float)(pulseIn(ultraPinLeft, HIGH)) / 147 * 2.54; // Convert to cm: pulse/147*2.54 = cm
-  avgDistRight += (float)(pulseIn(ultraPinRight, HIGH)) / 147 * 2.54;
+  totalDistLeft += (float)(pulseIn(ultraPinLeft, HIGH)) / 147.0 * 2.54; // Convert to cm: pulse/147*2.54 = cm
+  totalDistRight += (float)(pulseIn(ultraPinRight, HIGH)) / 147.0 * 2.54;
 
   counter++; // One more data point collected for each distance/velocity
   // if AVG_COUNT data points have been collected, take the average:
   if (counter >= AVG_COUNT) {
-    avgVel = avgVel / ((float)counter); // Calculate average velocity
-    avgDist = avgDist / ((float)counter); // Calculate average distance
-    // Print velocities with a V and newline to communicate with Processing
+    float avgVel = takeAverage(totalVel, counter);
+    totalVel = 0; // Reset totalVel for next average
+    float avgDist = takeAverage(totalDist, counter);
+    totalDist = 0; // Reset totalDist for next average
+    // Print to serial to communicate with Processing:
     Serial.print(avgVel); Serial.print('V');
-    // Print distances with a D and newline to communicate with Processing
     Serial.print(avgDist); Serial.println('D');
-    // Ultrasonic averages:
-    avgDistLeft = avgDistLeft / ((float)counter);
-    avgDistRight = avgDistRight / ((float)counter);
+
+
+    //---------- ADJUST FAN SPEED & LED INTENSITY ----------//
+    // Fan speed:
+    writeFanSpeed (fanPin, avgVel);
+    // LED intensity:
+    writeLED(LEDPinRight, takeAverage(totalDistRight, counter));
+    totalDistRight = 0; // Reset totalDistRight for next average
+    writeLED(LEDPinLeft, takeAverage(totalDistLeft, counter));
+    totalDistLeft = 0; // Reset totalDistLeft for next average
 
     counter = 0; // Reset the counter
-
-    //---------- ADJUST FAN SPEED & LED FADE ----------//
-    // Fan speed:
-    if (avgVel < VEL_MIN) { // Velocity less than the minimum
-      analogWrite(fanPin, 0); // Bottomed out
-    } else if (avgVel > VEL_MAX) { // Velocity more than the maximum
-      analogWrite(fanPin, 255); // Maxed out
-    } else {
-      analogWrite(fanPin, map(avgVel, VEL_MIN, VEL_MAX, PWM_MIN, PWM_MAX)); // Within range
-    }
-    // LED fade:
-    writeLED(LEDPinRight, avgDistRight);
-    writeLED(LEDPinLeft, avgDistLeft);
   }
 
 
@@ -116,6 +114,26 @@ void loop() {
   before = now;
   distPrev = distNow;
   delay(10);
+}
+
+/* ----------------------------------------------------
+ * ------------------ HELPER METHODS ------------------
+ * ---------------------------------------------------- */
+
+/* Takes the average given the total and a counter */
+float takeAverage (float total, int counter) {
+  return total / ((float)counter);
+}
+
+/* Changes the fan speed based on the velocity provided */
+void writeFanSpeed (int fanPin, float velocity) {
+  if (velocity < VEL_MIN) { // Velocity less than the minimum
+    analogWrite(fanPin, 0); // Bottomed out
+  } else if (velocity > VEL_MAX) { // Velocity more than the maximum
+    analogWrite(fanPin, 255); // Maxed out
+  } else {
+    analogWrite(fanPin, map(velocity, VEL_MIN, VEL_MAX, PWM_MIN, PWM_MAX)); // Within range
+  }
 }
 
 /* Changes the intensity of the LED based on the distance provided */
@@ -133,3 +151,4 @@ void writeLED (int ledPin, float dist) {
     analogWrite(ledPin, map(dist, MIN_ULTRA_DIST, MAX_ULTRA_DIST, 150, 0));
   }
 }
+
