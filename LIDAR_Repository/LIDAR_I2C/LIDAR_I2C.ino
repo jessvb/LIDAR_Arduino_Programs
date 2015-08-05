@@ -12,6 +12,9 @@
 #define    MeasureValue        0x04          // Value to initiate ranging.
 #define    RegisterHighLowB    0x8f          // Register to get both High and Low bytes in 1 call.
 
+unsigned long now_avg = 0; // For testing how long it takes to calculate one avg
+unsigned long before_avg = 0; // For testing how long it takes to calculate one avg
+
 int distNow = 0; // The current distance value.
 unsigned long now = 0; // The current time -> when a distNow is measured.
 int distPrev = 9999999; // The previous distance value measured.
@@ -107,12 +110,19 @@ void loop() {
     totalDistLeft = 0; // Reset totalDistLeft for next average
 
     counter = 0; // Reset the counter
+
+    before_avg = now_avg; // Update the previous time for the next loop
+    now_avg = millis(); // Update the current time
+    Serial.print("TIME FOR ONE AVGERAGE:\t");
+    Serial.print(float(now_avg - before_avg) / 1000);
+    Serial.println(" seconds");
   }
 
 
   //---------- UPDATE VALUES FOR NEXT LOOP ----------//
   before = now;
   distPrev = distNow;
+
   delay(10);
 }
 
