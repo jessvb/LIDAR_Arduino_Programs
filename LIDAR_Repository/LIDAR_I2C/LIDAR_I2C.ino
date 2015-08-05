@@ -25,17 +25,17 @@ float totalDist = 0; // The last couple distance values combined (used to take a
 int counter = 0; // Counter for taking averages
 const short AVG_COUNT = 5; // Number of data points that are averaged each loop
 
-int fanPin = 5; // PWM pin for the fan is pin #5
+const int fanPin = 5; // PWM pin for the fan is pin #5
 // Map the fanPin from PWM_MIN (when the fan just starts to spin) to PWM_MAX (255)
 const int PWM_MIN = 108; // The lowest possible number sent to the fanPin (fan doesn't spin here)
 const int PWM_MAX = 255; // The highest possible number sent to the fanPin
 const float VEL_MIN = 0.3; // The lowest possible velocity required to send voltage to the fanPin
 const float VEL_MAX = 3; // The velocity that maxes out the voltage sent to the fanPin
 
-int ultraPinRight = 2; // PW input for the right ultrasonic
-int LEDPinRight = 10; // PW output for the right LED
-int ultraPinLeft = 3; // PW input for the left ultrasonic
-int LEDPinLeft = 9; // PW output for the left LED
+const int ultraPinRight = 2; // interrupt input for the right ultrasonic -> int.0
+const int LEDPinRight = 10; // PW output for the right LED
+const int ultraPinLeft = 3; // interrupt input for the left ultrasonic -> int.1
+const int LEDPinLeft = 9; // PW output for the left LED
 float totalDistRight = 0; // The last couple distance values combined (used to take an average)
 float totalDistLeft = 0; // The last couple distance values combined (used to take an average)
 #define MIN_ULTRA_DIST 12.7 // The minimum distance in cm to light the LED to its max
