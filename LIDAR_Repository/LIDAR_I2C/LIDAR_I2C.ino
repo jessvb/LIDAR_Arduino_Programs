@@ -36,21 +36,33 @@ const int ultraPinRight = 2; // interrupt input for the right ultrasonic -> int.
 const int LEDPinRight = 10; // PW output for the right LED
 const int ultraPinLeft = 3; // interrupt input for the left ultrasonic -> int.1
 const int LEDPinLeft = 9; // PW output for the left LED
-float totalDistRight = 0; // The last couple distance values combined (used to take an average)
-float totalDistLeft = 0; // The last couple distance values combined (used to take an average)
 #define MIN_ULTRA_DIST 12.7 // The minimum distance in cm to light the LED to its max
 #define MAX_ULTRA_DIST 100.0 // The minimum distance in cm to just light the LED
 
+typedef struct _ultra_state {
+  volatile uint32_t startTime; // Start time of pulse
+  volatile uint32_t dt; // Pulse duration in microseconds
+  volatile boolean pulseStarted; // Flag to ensure correct initial conditions
+  volatile boolean lastState; // Keep track of the last logical state of the pin
+  volatile float distance; // Distance reading based on the pulse read
+  volatile float totalDist = 0; // The last couple distance values combined (used to take an average)
+  volatile int counter; // A counter for taking the average distance
+} ultra_state_t;
+
+ultra_state_t rightUltra; // The state of the right ultrasonic sensor
+ultra_state_t leftUltra; // The state of the left ultrasonic sensor
+
 void setup() {
   Serial.begin(9600); // Open serial connection at 9600bps
-  pinMode(ultraPinRight, INPUT);
-  pinMode(ultraPinLeft, INPUT);
   pinMode(LEDPinRight, OUTPUT);
   pinMode(LEDPinLeft, OUTPUT);
   I2c.begin(); // Open & join the irc bus as master
   delay(100); // Wait to make sure everything is powered up before sending or receiving data
   I2c.timeOut(50); // Set a timeout to ensure no locking up of sketch if I2C communication fails
   analogWrite(fanPin, 0); // Set the fan to not spin
+  attachInterrupt(0, rightInterrupt, CHANGE); // For reading the ultrasonics w/o pausing the code
+  attachInterrupt(1, leftInterrupt, CHANGE); // An interrupt is called every time the left/right
+  // ultrasonic has a change in state (rising/falling edge -> 1/0)
 }
 
 /* ----------------------------------------------------
@@ -78,16 +90,13 @@ void loop() {
   distNow = (distanceArray[0] << 8) + distanceArray[1];  // Shift high byte [0] 8 to the left and add low byte [1] to create 16-bit int
   now = millis(); // The time that distNow was measured.
 
+
   //---------- CALCULATE AVERAGE VELOCITY & DISTANCE ----------//
   elapsed = now - before; // Time elapsed between previous read (distPrev) and this read (distNow) -- for velocity calculation
   // Calculate velocity and add it to totalVel:
   totalVel += (((float)(distPrev - distNow)) / ((float)elapsed)) * 10; // Multiply by 10 b/c 1 cm/ms = 10 m/s
   // Note: If the velocity is POSITIVE, then something is coming closer from behind (if negative, then something's moving away)
   totalDist += distNow;
-  // Get ultrasonic distances:
-  totalDistLeft += (float)(pulseIn(ultraPinLeft, HIGH)) / 147.0 * 2.54; // Convert to cm: pulse/147*2.54 = cm
-  totalDistRight += (float)(pulseIn(ultraPinRight, HIGH)) / 147.0 * 2.54;
-
   counter++; // One more data point collected for each distance/velocity
   // if AVG_COUNT data points have been collected, take the average:
   if (counter >= AVG_COUNT) {
@@ -100,22 +109,15 @@ void loop() {
     Serial.print(avgDist); Serial.println('D');
 
 
-    //---------- ADJUST FAN SPEED & LED INTENSITY ----------//
-    // Fan speed:
+    //---------- ADJUST FAN SPEED AND COMPLETE METHOD ----------//
     writeFanSpeed (fanPin, avgVel);
-    // LED intensity:
-    writeLED(LEDPinRight, takeAverage(totalDistRight, counter));
-    totalDistRight = 0; // Reset totalDistRight for next average
-    writeLED(LEDPinLeft, takeAverage(totalDistLeft, counter));
-    totalDistLeft = 0; // Reset totalDistLeft for next average
-
-    counter = 0; // Reset the counter
-
+    
+    counter = 0; // Reset the counter for taking averages
     before_avg = now_avg; // Update the previous time for the next loop
     now_avg = millis(); // Update the current time
-    Serial.print("TIME FOR ONE AVGERAGE:\t");
-    Serial.print(float(now_avg - before_avg) / 1000);
-    Serial.println(" seconds");
+//    Serial.print("TIME FOR ONE AVGERAGE:\t");
+//    Serial.print(float(now_avg - before_avg) / 1000);
+//    Serial.println(" seconds");
   }
 
 
@@ -143,6 +145,70 @@ void writeFanSpeed (int fanPin, float velocity) {
     analogWrite(fanPin, 255); // Maxed out
   } else {
     analogWrite(fanPin, map(velocity, VEL_MIN, VEL_MAX, PWM_MIN, PWM_MAX)); // Within range
+  }
+}
+
+/* When the right ultrasonic starts/finishes a pulse, this method will be called */
+void rightInterrupt() {
+  // If the pulse is high, then save the start time:
+  if (digitalRead(ultraPinRight) > 0 && rightUltra.pulseStarted == 0) {
+    rightUltra.startTime = micros();
+    rightUltra.pulseStarted = 1;
+  } // If the pulse finishes:
+  else if (rightUltra.pulseStarted) {
+    // Get the total pulse time:
+    rightUltra.dt = micros() - rightUltra.startTime;
+
+    // Calculate the distance in centimeters:
+    rightUltra.distance = rightUltra.dt / 147.0 * 2.54; // Convert to cm: pulse/147*2.54 = cm
+//    Serial.print("         RIGHT: "); Serial.println(rightUltra.distance);
+
+    //Add the distance to the total distance and then average if needed
+    rightUltra.totalDist += rightUltra.distance;
+    rightUltra.counter++; // Another distance was calculated
+
+    if (rightUltra.counter >= AVG_COUNT) {
+      // Change the LED intensity:
+      writeLED(LEDPinRight, takeAverage(rightUltra.totalDist, rightUltra.counter));
+      // Reset the counter and total distance for the next average:
+      rightUltra.counter = 0;
+      rightUltra.totalDist = 0;
+    }
+
+    // Clear the flag (pulse hasn't started any more):
+    rightUltra.pulseStarted = 0;
+  }
+}
+
+/* When the left ultrasonic starts/finishes a pulse, this method will be called */
+void leftInterrupt() {
+  // If the pulse is high, then save the start time:
+  if (digitalRead(ultraPinLeft) > 0 && leftUltra.pulseStarted == 0) {
+    leftUltra.startTime = micros();
+    leftUltra.pulseStarted = 1;
+  } // If the pulse finishes:
+  else if (leftUltra.pulseStarted) {
+    // Get the total pulse time:
+    leftUltra.dt = micros() - leftUltra.startTime;
+
+    // Calculate the distance in centimeters:
+    leftUltra.distance = leftUltra.dt / 147.0 * 2.54; // Convert to cm: pulse/147*2.54 = cm
+ //   Serial.print("                           LEFT: "); Serial.println(leftUltra.distance);
+
+    //Add the distance to the total distance and then average if needed
+    leftUltra.totalDist += leftUltra.distance;
+    leftUltra.counter++; // Another distance was calculated
+
+    if (leftUltra.counter >= AVG_COUNT) {
+      // Change the LED intensity:
+      writeLED(LEDPinLeft, takeAverage(leftUltra.totalDist, leftUltra.counter));
+      // Reset the counter and total distance for the next average:
+      leftUltra.counter = 0;
+      leftUltra.totalDist = 0;
+    }
+
+    // Clear the flag (pulse hasn't started any more):
+    leftUltra.pulseStarted = 0;
   }
 }
 
