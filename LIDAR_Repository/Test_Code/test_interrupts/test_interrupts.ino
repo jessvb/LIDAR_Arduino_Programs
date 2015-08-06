@@ -48,5 +48,18 @@ void rightInterrupt() {
 
 /* When the left ultrasonic starts/finishes a pulse, this method will be called */
 void leftInterrupt() {
+  // If the pulse is high, then save the start time
+  if (digitalRead(ultraPinLeft) > 0 && leftUltra.pulseStarted == 0) {
+    leftUltra.startTime = micros();
+    leftUltra.pulseStarted = 1;
+  } else if (leftUltra.pulseStarted) {
+    leftUltra.dt = micros() - leftUltra.startTime;
 
+    // Calculate the distance in centimeters:
+    leftUltra.distance = leftUltra.dt / 147.0 * 2.54;;
+    Serial.print("             LEFT: "); Serial.println(leftUltra.distance);
+
+    // Clear the flag:
+    leftUltra.pulseStarted = 0;
+  }
 }
