@@ -38,7 +38,7 @@ void rightInterrupt() {
     rightUltra.dt = micros() - rightUltra.startTime;
 
     // Calculate the distance in centimeters:
-    rightUltra.distance = rightUltra.dt / 147.0 * 2.54;;
+    rightUltra.distance = rightUltra.dt / 147.0 * 2.54;
     Serial.println(rightUltra.distance);
 
     // Clear the flag:
@@ -56,7 +56,7 @@ void leftInterrupt() {
     leftUltra.dt = micros() - leftUltra.startTime;
 
     // Calculate the distance in centimeters:
-    leftUltra.distance = leftUltra.dt / 147.0 * 2.54;;
+    leftUltra.distance = leftUltra.dt / 147.0 * 2.54;
     Serial.print("             LEFT: "); Serial.println(leftUltra.distance);
 
     // Clear the flag:
