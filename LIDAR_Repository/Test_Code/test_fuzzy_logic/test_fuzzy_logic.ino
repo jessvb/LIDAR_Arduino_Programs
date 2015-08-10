@@ -24,5 +24,21 @@ void loop() {
  * and an array, it will modify the array to the correct [SLOW, MED,
  * FAST] values */
 void getLoMedHi(float currValue, float* loMedHi, fuzzy_values_t* fuzzyVals) {
-
+  if (currValue >= fuzzyVals->minVal && currValue < fuzzyVals->medVal) {
+    // low function -> lo value
+    loMedHi[0] = -1 / (fuzzyVals->medVal) * currValue + 1; // y = -1/run*x + 1
+    // left medium function -> med value
+    loMedHi[1] = 1 / (fuzzyVals->medVal) * currValue; // y = 1/run*x
+    // zero -> hi value
+    loMedHi[2] = 0;
+  } else if (currValue >= fuzzyVals->medVal && currValue <= fuzzyVals->maxVal) {
+    // zero -> lo value
+    loMedHi[0] = 0;
+    // right medium function -> med value
+    loMedHi[1] = -1 / (fuzzyVals->medVal) * currValue + 2; // y = -1/run*x + 2
+    // high function -> hi value
+    loMedHi[2] = 1 / (fuzzyVals->medVal) * currValue - 1; // y = 1/run*x - 1
+  } else {
+    Serial.print("ERROR: "); Serial.print(currValue); Serial.println(" not in range.");
+  }
 }
