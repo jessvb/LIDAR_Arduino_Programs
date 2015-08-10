@@ -112,10 +112,14 @@ void loop() {
   }
 
   //---------- CALCULATE LIDAR DISTANCES ----------//
-  if (rightUltra.newDt)
+  if (rightUltra.newDt) {
+    //Serial.print("                        RIGHT: ");
     pulseCalc(&rightUltra, LEDPinRight);
-  if (leftUltra.newDt)
+  }
+  if (leftUltra.newDt) {
+    //Serial.print("         LEFT: ");
     pulseCalc(&leftUltra, LEDPinLeft);
+  }
 
   //---------- UPDATE VALUES FOR NEXT LOOP ----------//
   before = now;
@@ -148,7 +152,7 @@ void writeFanSpeed (int fanPin, float velocity) {
 void pulseCalc (ultra_state_t *ultra, int ledPin) {
   // Calculate the distance in centimeters:
   ultra->distance = ultra->dt / 147.0 * 2.54; // Convert to cm: pulse/147*2.54 = cm
-  //    Serial.print("         RIGHT: "); Serial.println(ultra->distance);
+  //Serial.println(ultra->distance);
 
   //Add the distance to the total distance and then average if needed
   ultra->totalDist += ultra->distance;
