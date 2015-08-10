@@ -106,18 +106,13 @@ void loop() {
     counter = 0; // Reset the counter for taking averages
     before_avg = now_avg; // Update the previous time for the next loop
     now_avg = millis(); // Update the current time
-    //    Serial.print("TIME FOR ONE AVGERAGE:\t");
-    //    Serial.print(float(now_avg - before_avg) / 1000);
-    //    Serial.println(" seconds");
   }
 
   //---------- CALCULATE LIDAR DISTANCES ----------//
   if (rightUltra.newDt) {
-    //Serial.print("                        RIGHT: ");
     pulseCalc(&rightUltra, LEDPinRight);
   }
   if (leftUltra.newDt) {
-    //Serial.print("         LEFT: ");
     pulseCalc(&leftUltra, LEDPinLeft);
   }
 
@@ -152,7 +147,6 @@ void writeFanSpeed (int fanPin, float velocity) {
 void pulseCalc (ultra_state_t *ultra, int ledPin) {
   // Calculate the distance in centimeters:
   ultra->distance = ultra->dt / 147.0 * 2.54; // Convert to cm: pulse/147*2.54 = cm
-  //Serial.println(ultra->distance);
 
   //Add the distance to the total distance and then average if needed
   ultra->totalDist += ultra->distance;
