@@ -6,7 +6,8 @@
  * Also see: https://github.com/PulsedLight3D/LIDARLite_Basics
  */
 
-#include <I2C.h>
+#include <I2C.h>                             // For I2C communication with the LIDAR
+#include "StructDefs.h"                      // For definition of struct type
 #define    LIDARLite_ADDRESS   0x62          // Default I2C Address of LIDAR-Lite.
 #define    RegisterMeasure     0x00          // Register to write to initiate ranging.
 #define    MeasureValue        0x04          // Value to initiate ranging.
@@ -38,16 +39,6 @@ const int ultraPinLeft = 3; // interrupt input for the left ultrasonic -> int.1
 const int LEDPinLeft = 9; // PW output for the left LED
 #define MIN_ULTRA_DIST 12.7 // The minimum distance in cm to light the LED to its max
 #define MAX_ULTRA_DIST 100.0 // The minimum distance in cm to just light the LED
-
-typedef struct _ultra_state {
-  volatile uint32_t startTime; // Start time of pulse
-  volatile uint32_t dt; // Pulse duration in microseconds
-  volatile boolean pulseStarted; // Flag to ensure correct initial conditions
-  volatile boolean lastState; // Keep track of the last logical state of the pin
-  volatile float distance; // Distance reading based on the pulse read
-  volatile float totalDist = 0; // The last couple distance values combined (used to take an average)
-  volatile int counter; // A counter for taking the average distance
-} ultra_state_t;
 
 ultra_state_t rightUltra; // The state of the right ultrasonic sensor
 ultra_state_t leftUltra; // The state of the left ultrasonic sensor
@@ -109,17 +100,22 @@ void loop() {
     Serial.print(avgDist); Serial.println('D');
 
 
-    //---------- ADJUST FAN SPEED AND COMPLETE METHOD ----------//
+    //---------- ADJUST FAN SPEED ----------//
     writeFanSpeed (fanPin, avgVel);
-    
+
     counter = 0; // Reset the counter for taking averages
     before_avg = now_avg; // Update the previous time for the next loop
     now_avg = millis(); // Update the current time
-//    Serial.print("TIME FOR ONE AVGERAGE:\t");
-//    Serial.print(float(now_avg - before_avg) / 1000);
-//    Serial.println(" seconds");
+    //    Serial.print("TIME FOR ONE AVGERAGE:\t");
+    //    Serial.print(float(now_avg - before_avg) / 1000);
+    //    Serial.println(" seconds");
   }
 
+  //---------- CALCULATE LIDAR DISTANCES ----------//
+  if (rightUltra.newDt)
+    pulseCalc(&rightUltra, LEDPinRight);
+  if (leftUltra.newDt)
+    pulseCalc(&leftUltra, LEDPinLeft);
 
   //---------- UPDATE VALUES FOR NEXT LOOP ----------//
   before = now;
@@ -148,35 +144,43 @@ void writeFanSpeed (int fanPin, float velocity) {
   }
 }
 
+/* Calculates distance for the ultrasonics based on pulse length */
+void pulseCalc (ultra_state_t *ultra, int ledPin) {
+  // Calculate the distance in centimeters:
+  ultra->distance = ultra->dt / 147.0 * 2.54; // Convert to cm: pulse/147*2.54 = cm
+  //    Serial.print("         RIGHT: "); Serial.println(ultra->distance);
+
+  //Add the distance to the total distance and then average if needed
+  ultra->totalDist += ultra->distance;
+  ultra->counter++; // Another distance was calculated
+
+  if (ultra->counter >= AVG_COUNT) {
+    // Change the LED intensity:
+    writeLED(ledPin, takeAverage(ultra->totalDist, ultra->counter));
+    // Reset the counter and total distance for the next average:
+    ultra->counter = 0;
+    ultra->totalDist = 0;
+  }
+
+  // Update pulse flag (no new pulse time value):
+  ultra->newDt = 0;
+}
+
 /* When the right ultrasonic starts/finishes a pulse, this method will be called */
 void rightInterrupt() {
   // If the pulse is high, then save the start time:
   if (digitalRead(ultraPinRight) > 0 && rightUltra.pulseStarted == 0) {
     rightUltra.startTime = micros();
     rightUltra.pulseStarted = 1;
-  } // If the pulse finishes:
+  }
+  // If the pulse finishes:
   else if (rightUltra.pulseStarted) {
     // Get the total pulse time:
     rightUltra.dt = micros() - rightUltra.startTime;
 
-    // Calculate the distance in centimeters:
-    rightUltra.distance = rightUltra.dt / 147.0 * 2.54; // Convert to cm: pulse/147*2.54 = cm
-//    Serial.print("         RIGHT: "); Serial.println(rightUltra.distance);
-
-    //Add the distance to the total distance and then average if needed
-    rightUltra.totalDist += rightUltra.distance;
-    rightUltra.counter++; // Another distance was calculated
-
-    if (rightUltra.counter >= AVG_COUNT) {
-      // Change the LED intensity:
-      writeLED(LEDPinRight, takeAverage(rightUltra.totalDist, rightUltra.counter));
-      // Reset the counter and total distance for the next average:
-      rightUltra.counter = 0;
-      rightUltra.totalDist = 0;
-    }
-
-    // Clear the flag (pulse hasn't started any more):
+    // Clear the flags (pulse hasn't started any more & new pulse time ready):
     rightUltra.pulseStarted = 0;
+    rightUltra.newDt = 1;
   }
 }
 
@@ -186,29 +190,15 @@ void leftInterrupt() {
   if (digitalRead(ultraPinLeft) > 0 && leftUltra.pulseStarted == 0) {
     leftUltra.startTime = micros();
     leftUltra.pulseStarted = 1;
-  } // If the pulse finishes:
+  }
+  // If the pulse finishes:
   else if (leftUltra.pulseStarted) {
     // Get the total pulse time:
     leftUltra.dt = micros() - leftUltra.startTime;
 
-    // Calculate the distance in centimeters:
-    leftUltra.distance = leftUltra.dt / 147.0 * 2.54; // Convert to cm: pulse/147*2.54 = cm
- //   Serial.print("                           LEFT: "); Serial.println(leftUltra.distance);
-
-    //Add the distance to the total distance and then average if needed
-    leftUltra.totalDist += leftUltra.distance;
-    leftUltra.counter++; // Another distance was calculated
-
-    if (leftUltra.counter >= AVG_COUNT) {
-      // Change the LED intensity:
-      writeLED(LEDPinLeft, takeAverage(leftUltra.totalDist, leftUltra.counter));
-      // Reset the counter and total distance for the next average:
-      leftUltra.counter = 0;
-      leftUltra.totalDist = 0;
-    }
-
-    // Clear the flag (pulse hasn't started any more):
+    // Clear the flags (pulse hasn't started any more & new pulse time ready):
     leftUltra.pulseStarted = 0;
+    leftUltra.newDt = 1;
   }
 }
 
