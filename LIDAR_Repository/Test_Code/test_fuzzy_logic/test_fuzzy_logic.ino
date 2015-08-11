@@ -8,6 +8,10 @@ fuzzy_values_t VEL = {0, 3, 6, 9, 12};
 fuzzy_values_t DIST = {0, 10, 20, 30, 40};
 fuzzy_values_t _PWM = {0, 63.75, 127.5, 191.25, 255};
 
+const int RULES[3][3] = {{MED, LO, LO}, {HI, MED, MED}, {HI, HI, MED}};
+// NOTE: [nRows][mColumns] & [vel][dist]
+
+
 void setup() {
   Serial.begin(9600); //Opens serial connection at 9600bps.
 }
@@ -17,12 +21,12 @@ void loop() {
   float currVel = 10; // in meters/sec
 
   getLoMedHi(currVel, velValues, &VEL);
-  
+
   Serial.println("Velocity:");
   Serial.print("Lo: "); Serial.println(velValues[0]);
   Serial.print("Med: "); Serial.println(velValues[1]);
   Serial.print("Hi: "); Serial.println(velValues[2]);
-  
+
   float distValues[3]; // [SLOW, MED, FAST]
   float currDist = 2.7; // in meters
 
@@ -32,7 +36,7 @@ void loop() {
   Serial.print("Lo: "); Serial.println(distValues[0]);
   Serial.print("Med: "); Serial.println(distValues[1]);
   Serial.print("Hi: "); Serial.println(distValues[2]);
-  
+
   float pwmValues[3]; // [SLOW, MED, FAST]
   float currPWM = 200; // from 0 to 255
 
@@ -42,7 +46,7 @@ void loop() {
   Serial.print("Lo: "); Serial.println(pwmValues[0]);
   Serial.print("Med: "); Serial.println(pwmValues[1]);
   Serial.print("Hi: "); Serial.println(pwmValues[2]);
-  
+
   delay(100000);
 }
 
