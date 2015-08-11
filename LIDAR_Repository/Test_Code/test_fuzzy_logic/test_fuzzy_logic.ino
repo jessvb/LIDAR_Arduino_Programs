@@ -14,40 +14,20 @@ const int RULES[3][3] = {{MED, LO, LO}, {HI, MED, MED}, {HI, HI, MED}};
 
 void setup() {
   Serial.begin(9600); //Opens serial connection at 9600bps.
+
+  float currVel = 10; // in meters/sec
+  float velValues[3]; // [SLOW, MED, FAST]
+  getLoMedHi(currVel, velValues, &VEL);
+
+  float currDist = 2.7; // in meters
+  float distValues[3]; // [SLOW, MED, FAST]
+  getLoMedHi(currDist, distValues, &DIST);
+
+  float pwmMembership[3]; // [LO, MED, HI]
+  infer(velValues, distValues, pwmMembership);
 }
 
 void loop() {
-  float velValues[3]; // [SLOW, MED, FAST]
-  float currVel = 10; // in meters/sec
-
-  getLoMedHi(currVel, velValues, &VEL);
-
-  Serial.println("Velocity:");
-  Serial.print("Lo: "); Serial.println(velValues[0]);
-  Serial.print("Med: "); Serial.println(velValues[1]);
-  Serial.print("Hi: "); Serial.println(velValues[2]);
-
-  float distValues[3]; // [SLOW, MED, FAST]
-  float currDist = 2.7; // in meters
-
-  getLoMedHi(currDist, distValues, &DIST);
-
-  Serial.println("Distance:");
-  Serial.print("Lo: "); Serial.println(distValues[0]);
-  Serial.print("Med: "); Serial.println(distValues[1]);
-  Serial.print("Hi: "); Serial.println(distValues[2]);
-
-  float pwmValues[3]; // [SLOW, MED, FAST]
-  float currPWM = 200; // from 0 to 255
-
-  getLoMedHi(currPWM, pwmValues, &_PWM);
-
-  Serial.println("PWM:");
-  Serial.print("Lo: "); Serial.println(pwmValues[0]);
-  Serial.print("Med: "); Serial.println(pwmValues[1]);
-  Serial.print("Hi: "); Serial.println(pwmValues[2]);
-
-  delay(100000);
 }
 
 /* Fuzzy function. Given a specific velocity/distance, fuzzy value type,
@@ -56,21 +36,46 @@ void loop() {
 void getLoMedHi(float currValue, float* loMedHi, fuzzy_values_t* fuzzyVals) {
   if (currValue >= fuzzyVals->minVal && currValue < fuzzyVals->medVal) {
     // low function -> lo value
-    loMedHi[0] = -1 / (fuzzyVals->medVal) * currValue + 1; // y = -1/run*x + 1
+    loMedHi[LO] = -1 / (fuzzyVals->medVal) * currValue + 1; // y = -1/run*x + 1
     // 1 - lo value -> med value
     // loMedHi[1] = 1 / (fuzzyVals->medVal) * currValue; // y = 1/run*x
-    loMedHi[1] = 1 - loMedHi[0];
+    loMedHi[MED] = 1 - loMedHi[0];
     // zero -> hi value
-    loMedHi[2] = 0;
+    loMedHi[HI] = 0;
   } else if (currValue >= fuzzyVals->medVal && currValue <= fuzzyVals->maxVal) {
     // zero -> lo value
-    loMedHi[0] = 0;
+    loMedHi[LO] = 0;
     // right medium function -> med value
-    loMedHi[1] = -1 / (fuzzyVals->medVal) * currValue + 2; // y = -1/run*x + 2
+    loMedHi[MED] = -1 / (fuzzyVals->medVal) * currValue + 2; // y = -1/run*x + 2
     // 1 - med value -> hi value
     // loMedHi[2] = 1 / (fuzzyVals->medVal) * currValue - 1; // y = 1/run*x - 1
-    loMedHi[2] = 1 - loMedHi[1];
+    loMedHi[HI] = 1 - loMedHi[1];
   } else {
     Serial.print("ERROR: "); Serial.print(currValue); Serial.println(" not in range.");
   }
+}
+
+/* Inference function. Given two arrays of loMedHi values for velocity and distance,
+ * this function will output ('modify') an array that combines the two initial
+ * arrays. The final array is used to find the membership of the PWM function */
+void infer(float* velArr, float* distArr, float* pwmArr) {
+  // Initialize the pwm array to 0.
+  pwmArr[LO] = 0; pwmArr[MED] = 0; pwmArr[HI] = 0;
+
+  // Cycle through the cases (vel=lo,dist=lo; vel=lo,dist=med; etc), use the RULES
+  // to determine if the vel/dist pair applies to a lo/med/hi pwm, take the minimum
+  // value between vel/dist, and give that value to pwm, if it's larger than the
+  // current value for pwm (take the maximum to accummulate).
+  int i = LO;
+  int j = LO;
+  for (i = LO; i <= HI; i++) {
+    for (j = LO; j <= HI; j++) {
+      float smaller = min(velArr[i], distArr[j]);
+      if (smaller > pwmArr[RULES[i][j]])
+        pwmArr[RULES[i][j]] = smaller;
+    }
+  }
+  Serial.print("LO: "); Serial.println(pwmArr[LO]);
+  Serial.print("MED: "); Serial.println(pwmArr[MED]);
+  Serial.print("HI: "); Serial.println(pwmArr[HI]);
 }
