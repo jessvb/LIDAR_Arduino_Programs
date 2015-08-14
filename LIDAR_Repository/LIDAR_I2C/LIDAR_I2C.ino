@@ -33,10 +33,10 @@ const int PWM_MAX = 255; // The highest possible number sent to the fanPin
 const float VEL_MIN = 0.3; // The lowest possible velocity required to send voltage to the fanPin
 const float VEL_MAX = 3; // The velocity that maxes out the voltage sent to the fanPin
 
-const int ultraPinRight = 2; // interrupt input for the right ultrasonic -> int.0
-const int LEDPinRight = 10; // PW output for the right LED
-const int ultraPinLeft = 3; // interrupt input for the left ultrasonic -> int.1
-const int LEDPinLeft = 9; // PW output for the left LED
+const int ultraPinRight = 3; // interrupt input for the right ultrasonic -> int.0
+const int LEDPinRight = 7; // PW output for the right LED
+const int ultraPinLeft = 2; // interrupt input for the left ultrasonic -> int.1
+const int LEDPinLeft = 4; // PW output for the left LED
 #define MIN_ULTRA_DIST 12.7 // The minimum distance in cm to light the LED to its max
 #define MAX_ULTRA_DIST 100.0 // The minimum distance in cm to just light the LED
 
@@ -51,8 +51,8 @@ void setup() {
   delay(100); // Wait to make sure everything is powered up before sending or receiving data
   I2c.timeOut(50); // Set a timeout to ensure no locking up of sketch if I2C communication fails
   analogWrite(fanPin, 0); // Set the fan to not spin
-  attachInterrupt(0, rightInterrupt, CHANGE); // For reading the ultrasonics w/o pausing the code
-  attachInterrupt(1, leftInterrupt, CHANGE); // An interrupt is called every time the left/right
+  attachInterrupt(ultraPinRight - 2, rightInterrupt, CHANGE); // For reading the ultrasonics w/o pausing the code
+  attachInterrupt(ultraPinLeft - 2, leftInterrupt, CHANGE); // An interrupt is called every time the left/right
   // ultrasonic has a change in state (rising/falling edge -> 1/0)
 }
 
@@ -202,6 +202,12 @@ void leftInterrupt() {
 
 /* Changes the intensity of the LED based on the distance provided */
 void writeLED (int ledPin, float dist) {
+  if (dist < (MIN_ULTRA_DIST + MAX_ULTRA_DIST) / 2)
+    digitalWrite(ledPin, HIGH);
+  else
+    digitalWrite(ledPin, LOW);
+
+  /*
   if (dist <= MIN_ULTRA_DIST) {
     // If very close, light the LED to its maximum
     analogWrite(ledPin, 255);
@@ -214,5 +220,6 @@ void writeLED (int ledPin, float dist) {
     // 150<->255, thus the gradient is better between 0<->150)
     analogWrite(ledPin, map(dist, MIN_ULTRA_DIST, MAX_ULTRA_DIST, 150, 0));
   }
+  */
 }
 
