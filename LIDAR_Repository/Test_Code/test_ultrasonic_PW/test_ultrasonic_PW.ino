@@ -1,7 +1,7 @@
-int ultraPinRight = 5; // PW input for the right ultrasonic
-int LEDPinRight = 10; // PW output for the right LED
-int ultraPinLeft = 6; // PW input for the left ultrasonic
-int LEDPinLeft = 9; // PW output for the left LED
+int ultraPinRight = 2; // PW input for the right ultrasonic
+int LEDPinRight = 4; // PW output for the right LED
+int ultraPinLeft = 3; // PW input for the left ultrasonic
+int LEDPinLeft = 7; // PW output for the left LED
 #define MAX_DIST 100.0
 #define MIN_DIST 12.7
 
@@ -23,9 +23,14 @@ void readDistWriteLED (int distPin, int ledPin) {
   // ------- READ ULTRASONIC ------- //
   // Convert to cm: pulse/147*2.54 = cm
   float distCM = (pulseIn(distPin, HIGH)) / 147 * 2.54;
-  Serial.print(distPin);
-  Serial.print(" distance (cm): ");
-  Serial.println(distCM);
+
+  if (distPin == ultraPinLeft) {
+    Serial.print("LEFT distance (cm): ");
+    Serial.println(distCM);
+  } else {
+    Serial.print("                             RIGHT distance (cm): ");
+    Serial.println(distCM);
+  }
 
   // ------- WRITE LED ------- //
   if (distCM <= MIN_DIST) {
