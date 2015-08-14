@@ -26,12 +26,13 @@ float totalDist = 0; // The last couple distance values combined (used to take a
 int counter = 0; // Counter for taking averages
 const short AVG_COUNT = 5; // Number of data points that are averaged each loop
 
-const int fanPin = 5; // PWM pin for the fan is pin #5
-// Map the fanPin from PWM_MIN (when the fan just starts to spin) to PWM_MAX (255)
-const int PWM_MIN = 108; // The lowest possible number sent to the fanPin (fan doesn't spin here)
-const int PWM_MAX = 255; // The highest possible number sent to the fanPin
-const float VEL_MIN = 0.3; // The lowest possible velocity required to send voltage to the fanPin
-const float VEL_MAX = 3; // The velocity that maxes out the voltage sent to the fanPin
+const int motorPinLeft = 5; // PWM pin for the left motor
+const int motorPinRight = 6; // PWM pin for the right motor
+// Map the motorPin from PWM_MIN (when the motor just starts to spin) to PWM_MAX (255)
+const int PWM_MIN = 108; // The lowest possible number sent to the motorPins (motor doesn't spin here)
+const int PWM_MAX = 255; // The highest possible number sent to the motorPins
+const float VEL_MIN = 0.3; // The lowest possible velocity required to send voltage to the motorPin
+const float VEL_MAX = 3; // The velocity that maxes out the voltage sent to the motorPin
 
 const int ultraPinRight = 3; // interrupt input for the right ultrasonic -> int.0
 const int LEDPinRight = 7; // PW output for the right LED
@@ -50,7 +51,8 @@ void setup() {
   I2c.begin(); // Open & join the irc bus as master
   delay(100); // Wait to make sure everything is powered up before sending or receiving data
   I2c.timeOut(50); // Set a timeout to ensure no locking up of sketch if I2C communication fails
-  analogWrite(fanPin, 0); // Set the fan to not spin
+  analogWrite(motorPinLeft, 0); // Set the motors to not spin
+  analogWrite(motorPinRight, 0); // Set the motors to not spin
   attachInterrupt(ultraPinRight - 2, rightInterrupt, CHANGE); // For reading the ultrasonics w/o pausing the code
   attachInterrupt(ultraPinLeft - 2, leftInterrupt, CHANGE); // An interrupt is called every time the left/right
   // ultrasonic has a change in state (rising/falling edge -> 1/0)
@@ -100,8 +102,9 @@ void loop() {
     Serial.print(avgDist); Serial.println('D');
 
 
-    //---------- ADJUST FAN SPEED ----------//
-    writeFanSpeed (fanPin, avgVel);
+    //---------- ADJUST MOTOR SPEED ----------//
+    writeMotorSpeed (motorPinLeft, avgVel);
+    writeMotorSpeed (motorPinRight, avgVel);
 
     counter = 0; // Reset the counter for taking averages
     before_avg = now_avg; // Update the previous time for the next loop
@@ -132,14 +135,14 @@ float takeAverage (float total, int counter) {
   return total / ((float)counter);
 }
 
-/* Changes the fan speed based on the velocity provided */
-void writeFanSpeed (int fanPin, float velocity) {
+/* Changes the motor speed based on the velocity provided */
+void writeMotorSpeed (int motorPin, float velocity) {
   if (velocity < VEL_MIN) { // Velocity less than the minimum
-    analogWrite(fanPin, 0); // Bottomed out
+    analogWrite(motorPin, 0); // Bottomed out
   } else if (velocity > VEL_MAX) { // Velocity more than the maximum
-    analogWrite(fanPin, 255); // Maxed out
+    analogWrite(motorPin, 255); // Maxed out
   } else {
-    analogWrite(fanPin, map(velocity, VEL_MIN, VEL_MAX, PWM_MIN, PWM_MAX)); // Within range
+    analogWrite(motorPin, map(velocity, VEL_MIN, VEL_MAX, PWM_MIN, PWM_MAX)); // Within range
   }
 }
 
