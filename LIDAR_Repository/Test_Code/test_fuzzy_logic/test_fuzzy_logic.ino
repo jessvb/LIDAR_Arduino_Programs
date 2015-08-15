@@ -3,28 +3,39 @@
 #define LO 0
 #define MED 1
 #define HI 2
+#define NUMVALS 101
 
 fuzzy_values_t VEL = {0, 3, 6, 9, 12};
 fuzzy_values_t DIST = {0, 10, 20, 30, 40};
 fuzzy_values_t _PWM = {0, 63.75, 127.5, 191.25, 255};
 
 const int RULES[3][3] = {{MED, LO, LO}, {HI, MED, MED}, {HI, HI, MED}};
-// NOTE: [nRows][mColumns] & [vel][dist]
+// NOTE: [nRows][mColumns] or [vel][dist]
 
 
 void setup() {
   Serial.begin(9600); //Opens serial connection at 9600bps.
 
-  float currVel = 10; // in meters/sec
+  /*float areaCentroid[2] = {0};
+  float heights[2] = {0.3, 0.1};
+  getAreaAndCentroid(areaCentroid, 0, 1.2, heights);
+  Serial.println(areaCentroid[0]);
+  Serial.println(areaCentroid[1]);*/
+
+  float currVel = 7; // in meters/sec
+  float currDist = 3; // in meters
+
   float velValues[3]; // [SLOW, MED, FAST]
   getLoMedHi(currVel, velValues, &VEL);
 
-  float currDist = 2.7; // in meters
   float distValues[3]; // [SLOW, MED, FAST]
   getLoMedHi(currDist, distValues, &DIST);
 
   float pwmMembership[3]; // [LO, MED, HI]
   infer(velValues, distValues, pwmMembership);
+
+  float finalPWM = defuzzification(pwmMembership, &_PWM);
+  Serial.println(finalPWM);
 }
 
 void loop() {
@@ -57,7 +68,8 @@ void getLoMedHi(float currValue, float* loMedHi, fuzzy_values_t* fuzzyVals) {
 
 /* Inference function. Given two arrays of loMedHi values for velocity and distance,
  * this function will output ('modify') an array that combines the two initial
- * arrays. The final array is used to find the membership of the PWM function */
+ * arrays. The final array is used to find the membership of the PWM function (for
+ * the low, med, high functions of */
 void infer(float* velArr, float* distArr, float* pwmArr) {
   // Initialize the pwm array to 0.
   pwmArr[LO] = 0; pwmArr[MED] = 0; pwmArr[HI] = 0;
@@ -75,7 +87,76 @@ void infer(float* velArr, float* distArr, float* pwmArr) {
         pwmArr[RULES[i][j]] = smaller;
     }
   }
-  Serial.print("LO: "); Serial.println(pwmArr[LO]);
-  Serial.print("MED: "); Serial.println(pwmArr[MED]);
-  Serial.print("HI: "); Serial.println(pwmArr[HI]);
+  //  Serial.print("LO: "); Serial.println(pwmArr[LO]);
+  //  Serial.print("MED: "); Serial.println(pwmArr[MED]);
+  //  Serial.print("HI: "); Serial.println(pwmArr[HI]);
+}
+
+/* Defuzzification function. Given a membership array (maxVals) and the output fuzzy
+ * value type (ex: PWM output struct), this function will return the final output
+ * value (ex: 177 PWM). */
+float defuzzification(float* maxVals, fuzzy_values_t* fuzzyVals) {
+  float pwmFxn[NUMVALS] = {0};
+  getFxnPts(pwmFxn, maxVals, fuzzyVals);
+
+  // Get the area & "weight" of each section of the graph:
+  float totalArea = 0;
+  float totalWeight = 0;
+  const float dx = fuzzyVals->maxVal / (NUMVALS - 1); // base of the trapezoid
+  int i = 0;
+  for (i = 0; i < NUMVALS; i++) {
+    // Get the area and centroid [area, centroid] of the current section of graph:
+    float areaAndCentroid[2];
+    getAreaAndCentroid(areaAndCentroid, i, dx, pwmFxn);
+    // Update the total area & total weight:
+    totalArea += areaAndCentroid[0]; // [area, centroid]
+    totalWeight += areaAndCentroid[0] * areaAndCentroid[1];
+  }
+
+  // Return the final, defuzzified output value:
+  return totalWeight / totalArea;
+}
+
+/* This method modifies an array of NUMVALS values to the y-values of the fuzzyVals graph.
+ * These values are needed to determine the final output of the defuzzification. */
+void getFxnPts(float* fxn, float* maxVals, fuzzy_values_t* fuzzyVals) {
+  int i = 0;
+  for (i = 0; i < NUMVALS; i++) {
+    float loMedHi[3] = {0};
+    float x = i * (fuzzyVals->maxVal / (NUMVALS - 1)); // x position on graph
+    getLoMedHi(x, loMedHi, fuzzyVals);
+
+    // Take the minimum between the function caps and the function values, and then take the
+    // maximum between each function. This gives the final output function values.
+    fxn[i] = max(min(maxVals[LO], loMedHi[LO]), min(maxVals[MED], loMedHi[MED]));
+    fxn[i] = max(fxn[i], min(maxVals[HI], loMedHi[HI]));
+  }
+}
+
+/* This method takes an array of function values, an integer index for that array, and the
+ * distance between two points on the output graph (dx). It then modifies a given array to
+ * contain [area, centroid] of the graph to the right of the given index. */
+void getAreaAndCentroid(float* areaAndCentroid, int i, float dx, float* fxnPts) {
+  //       /|
+  //      / |
+  // b-> |  | <-a  (a > b)
+  //     |__|
+  //      dx
+  // If right value is greater than left value, a = right value & b = left value:
+  float a;
+  float b;
+  if (fxnPts[i + 1] - fxnPts[i] > 0) {
+    a = fxnPts[i + 1];
+    b = fxnPts[i];
+  } else {
+    a = fxnPts[i];
+    b = fxnPts[i + 1];
+  }
+  Serial.print("y1:");
+  // Find the area based on the area of a trapezoid:
+  areaAndCentroid[0] = dx * b + dx * (a - b) / 2;
+  // Find the centroid based on the centroid of a trapezoid:
+  areaAndCentroid[1] = (1.0 / 3.0) * dx * (b + 2.0 * a) / (a + b);
+  Serial.print("Area: "); Serial.println(areaAndCentroid[0]);
+  Serial.print("                 Centroid: "); Serial.println(areaAndCentroid[1]);
 }
