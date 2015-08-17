@@ -9,7 +9,7 @@ fuzzy_values_t VEL = {0, 3, 6, 9, 12};
 fuzzy_values_t DIST = {0, 10, 20, 30, 40};
 fuzzy_values_t _PWM = {0, 63.75, 127.5, 191.25, 255};
 
-const int RULES[3][3] = {{MED, LO, LO}, {HI, MED, MED}, {HI, HI, MED}};
+const int RULES[3][3] = {{MED, LO, LO}, {HI, MED, MED}, {HI, HI, MED}}; // AFTER DONE TESTING CHANGE (HI MED MED) TO (HI MED LO) TO MAKE IT SYMMETRICAL
 // NOTE: [nRows][mColumns] or [vel][dist]
 
 
@@ -96,6 +96,9 @@ void infer(float* velArr, float* distArr, float* pwmArr) {
  * value type (ex: PWM output struct), this function will return the final output
  * value (ex: 177 PWM). */
 float defuzzification(float* maxVals, fuzzy_values_t* fuzzyVals) {
+
+  // TO MAKE MORE EFFICIENT, COMBINE THE GETFXNPTS & AREAANDCENTROID FXNS SO YOU DON'T HAVE TO CALCULATE X OVER AND OVER AGAIN!!!!
+
   float pwmFxn[NUMVALS] = {0};
   getFxnPts(pwmFxn, maxVals, fuzzyVals);
 
@@ -107,10 +110,11 @@ float defuzzification(float* maxVals, fuzzy_values_t* fuzzyVals) {
   for (i = 0; i < NUMVALS; i++) {
     // Get the area and centroid [area, centroid] of the current section of graph:
     float areaAndCentroid[2];
-    getAreaAndCentroid(areaAndCentroid, i, dx, pwmFxn);
+    float x = i * (fuzzyVals->maxVal / (NUMVALS - 1)); // x position on graph
+    getAreaAndCentroid(areaAndCentroid, i, x, dx, pwmFxn);
     // Update the total area & total weight:
-    totalArea += areaAndCentroid[0]; // [area, centroid]
-    totalWeight += areaAndCentroid[0] * areaAndCentroid[1];
+    totalArea += areaAndCentroid[0]; // array: [area, centroid]
+    totalWeight += areaAndCentroid[0] * areaAndCentroid[1]; // + (area*centroid)
   }
 
   // Return the final, defuzzified output value:
@@ -133,10 +137,11 @@ void getFxnPts(float* fxn, float* maxVals, fuzzy_values_t* fuzzyVals) {
   }
 }
 
-/* This method takes an array of function values, an integer index for that array, and the
- * distance between two points on the output graph (dx). It then modifies a given array to
- * contain [area, centroid] of the graph to the right of the given index. */
-void getAreaAndCentroid(float* areaAndCentroid, int i, float dx, float* fxnPts) {
+/* This method takes an array of function values, an integer index for that array, the x
+ * position at that index, and the distance between two points on the output graph (dx).
+ * It then modifies a given array to contain [area, centroid] of the graph to the right
+ * of the given index. */
+void getAreaAndCentroid(float* areaAndCentroid, int i, float x, float dx, float* fxnPts) {
   //       /|
   //      / |
   // b-> |  | <-a  (a > b)
@@ -152,11 +157,12 @@ void getAreaAndCentroid(float* areaAndCentroid, int i, float dx, float* fxnPts) 
     a = fxnPts[i];
     b = fxnPts[i + 1];
   }
-  Serial.print("y1:");
   // Find the area based on the area of a trapezoid:
   areaAndCentroid[0] = dx * b + dx * (a - b) / 2;
-  // Find the centroid based on the centroid of a trapezoid:
-  areaAndCentroid[1] = (1.0 / 3.0) * dx * (b + 2.0 * a) / (a + b);
-  Serial.print("Area: "); Serial.println(areaAndCentroid[0]);
-  Serial.print("                 Centroid: "); Serial.println(areaAndCentroid[1]);
+  // Find the centroid based on the centroid of a trapezoid + left x position:
+  areaAndCentroid[1] = ((1.0 / 3.0) * dx * (b + 2.0 * a) / (a + b)) + (x);
+
+
+  //Serial.print("Area: "); Serial.println(areaAndCentroid[0]);
+  //Serial.print("                 Centroid: "); Serial.println(areaAndCentroid[1]);
 }
