@@ -9,20 +9,12 @@ fuzzy_values_t VEL = {0, 3, 6, 9, 12};
 fuzzy_values_t DIST = {0, 10, 20, 30, 40};
 fuzzy_values_t _PWM = {0, 63.75, 127.5, 191.25, 255};
 
-const int RULES[3][3] = {{MED, LO, LO}, {HI, MED, MED}, {HI, HI, MED}}; // AFTER DONE TESTING CHANGE (HI MED MED) TO (HI MED LO) TO MAKE IT SYMMETRICAL
+const int RULES[3][3] = {{MED, LO, LO}, {HI, MED, LO}, {HI, HI, MED}};
 // NOTE: [nRows][mColumns] or [vel][dist]
 
 
 void setup() {
   Serial.begin(9600); //Opens serial connection at 9600bps.
-
-  /*float areaCentroid[2] = {0};
-  float heights[2] = {0.3, 0.1};
-  getAreaAndCentroid(areaCentroid, 0, 1.2, heights);
-  Serial.println(areaCentroid[0]);
-  Serial.println(areaCentroid[1]);*/
-
-
 
   float currVel = 1.2; // in meters/sec
   float currDist = 40; // in meters
@@ -37,7 +29,7 @@ void setup() {
   infer(velValues, distValues, pwmMembership);
 
   float finalPWM = defuzzification(pwmMembership, &_PWM);
-  Serial.println(finalPWM);
+  Serial.print("Final PWM: "); Serial.println(finalPWM);
 }
 
 void loop() {
@@ -82,7 +74,7 @@ void infer(float* velArr, float* distArr, float* pwmArr) {
 
   // Cycle through the cases (vel=lo,dist=lo; vel=lo,dist=med; etc), use the RULES
   // to determine if the vel/dist pair applies to a lo/med/hi pwm, take the minimum
-  // value between vel/dist, and give that value to pwm, if it's larger than the
+  // value between vel/dist, and give that value to pwm if it's larger than the
   // current value for pwm (take the maximum to accummulate).
   int i = LO;
   int j = LO;
@@ -126,7 +118,7 @@ float defuzzification(float* maxVals, fuzzy_values_t* fuzzyVals) {
     if (y_prev == -1) {
       // For first time through loop, update y_0:
       y_0 = y_curr;
-      Serial.print("y_0: "); Serial.println(y_0);
+      //      Serial.print("y_0: "); Serial.println(y_0);
     } else {
       slope_curr = (y_curr - y_prev) / (dx);
       // Make sure we have 2 slopes & they aren't equal (floating pt comparison)
@@ -150,13 +142,15 @@ float defuzzification(float* maxVals, fuzzy_values_t* fuzzyVals) {
         }
         // Find the area based on the area of a trapezoid:
         float area = base * b + base * (a - b) / 2;
-        totalArea += area;
-        // Find the centroid based on the centroid of a trapezoid + left x position:
-        totalMass += area * ((1.0 / 3.0) * base * (b + 2.0 * a) / (a + b) + x_0);
+        if (area > 0.001) {
+          totalArea += area;
+          // Find the centroid based on the centroid of a trapezoid + left x position:
+          totalMass += area * ((1.0 / 3.0) * base * (b + 2.0 * a) / (a + b) + x_0);
+        }
 
         // Update x_0 & y_0:
-        x_0 = x_curr - dx; Serial.print("x_0: "); Serial.println(x_0);
-        y_0 = y_prev; Serial.print("y_0: "); Serial.println(y_0);
+        x_0 = x_curr - dx; //Serial.print("x_0: "); Serial.println(x_0);
+        y_0 = y_prev; //Serial.print("y_0: "); Serial.println(y_0);
       }
     }
 
@@ -180,9 +174,11 @@ float defuzzification(float* maxVals, fuzzy_values_t* fuzzyVals) {
   }
   // Find the area based on the area of a trapezoid:
   float area = base * b + base * (a - b) / 2;
-  totalArea += area;
-  // Find the centroid based on the centroid of a trapezoid + left x position:
-  totalMass += area * ((1.0 / 3.0) * base * (b + 2.0 * a) / (a + b) + x_0);
+  if (area > 0.001) {
+    totalArea += area;
+    // Find the centroid based on the centroid of a trapezoid + left x position:
+    totalMass += area * ((1.0 / 3.0) * base * (b + 2.0 * a) / (a + b) + x_0);
+  }
   return totalMass / totalArea;
 }
 
