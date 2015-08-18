@@ -22,8 +22,10 @@ void setup() {
   Serial.println(areaCentroid[0]);
   Serial.println(areaCentroid[1]);*/
 
-  float currVel = 7; // in meters/sec
-  float currDist = 3; // in meters
+
+
+  float currVel = 10; // in meters/sec
+  float currDist = 15; // in meters
 
   float velValues[3]; // [SLOW, MED, FAST]
   getLoMedHi(currVel, velValues, &VEL);
@@ -53,7 +55,7 @@ void getLoMedHi(float currValue, float* loMedHi, fuzzy_values_t* fuzzyVals) {
     loMedHi[MED] = 1 - loMedHi[0];
     // zero -> hi value
     loMedHi[HI] = 0;
-  } else if (currValue >= fuzzyVals->medVal && currValue <= fuzzyVals->maxVal) {
+  } else if (currValue >= fuzzyVals->medVal && currValue <= (fuzzyVals->maxVal + 0.001)) {
     // zero -> lo value
     loMedHi[LO] = 0;
     // right medium function -> med value
@@ -63,6 +65,8 @@ void getLoMedHi(float currValue, float* loMedHi, fuzzy_values_t* fuzzyVals) {
     loMedHi[HI] = 1 - loMedHi[1];
   } else {
     Serial.print("ERROR: "); Serial.print(currValue); Serial.println(" not in range.");
+    Serial.print("Range: "); Serial.print (fuzzyVals->minVal);
+    Serial.print("-"); Serial.println (fuzzyVals->maxVal);
   }
 }
 
@@ -92,77 +96,99 @@ void infer(float* velArr, float* distArr, float* pwmArr) {
   //  Serial.print("HI: "); Serial.println(pwmArr[HI]);
 }
 
-/* Defuzzification function. Given a membership array (maxVals) and the output fuzzy
- * value type (ex: PWM output struct), this function will return the final output
- * value (ex: 177 PWM). */
+/* Defuzzification function. Given a membership array of the output function(maxVals)
+ * and the ouput fuzzy value type (ex: PWM output struct), this function will return
+ * the final output value (ex: 177 PWM). */
 float defuzzification(float* maxVals, fuzzy_values_t* fuzzyVals) {
-
-  // TO MAKE MORE EFFICIENT, COMBINE THE GETFXNPTS & AREAANDCENTROID FXNS SO YOU DON'T HAVE TO CALCULATE X OVER AND OVER AGAIN!!!!
-
-  float pwmFxn[NUMVALS] = {0};
-  getFxnPts(pwmFxn, maxVals, fuzzyVals);
-
-  // Get the area & "weight" of each section of the graph:
   float totalArea = 0;
-  float totalWeight = 0;
-  const float dx = fuzzyVals->maxVal / (NUMVALS - 1); // base of the trapezoid
-  int i = 0;
-  for (i = 0; i < NUMVALS; i++) {
-    // Get the area and centroid [area, centroid] of the current section of graph:
-    float areaAndCentroid[2];
-    float x = i * (fuzzyVals->maxVal / (NUMVALS - 1)); // x position on graph
-    getAreaAndCentroid(areaAndCentroid, i, x, dx, pwmFxn);
-    // Update the total area & total weight:
-    totalArea += areaAndCentroid[0]; // array: [area, centroid]
-    totalWeight += areaAndCentroid[0] * areaAndCentroid[1]; // + (area*centroid)
-  }
+  float totalMass = 0;
 
-  // Return the final, defuzzified output value:
-  return totalWeight / totalArea;
-}
+  float y_prev = -1;
+  float y_curr = -1;
+  float slope_curr = -999;
+  float slope_prev = -999;
+  float x_0 = 0;
+  float y_0 = -1;
 
-/* This method modifies an array of NUMVALS values to the y-values of the fuzzyVals graph.
- * These values are needed to determine the final output of the defuzzification. */
-void getFxnPts(float* fxn, float* maxVals, fuzzy_values_t* fuzzyVals) {
   int i = 0;
+  float x_curr = 0;
+  float dx = (fuzzyVals->maxVal) / (NUMVALS - 1);
   for (i = 0; i < NUMVALS; i++) {
     float loMedHi[3] = {0};
-    float x = i * (fuzzyVals->maxVal / (NUMVALS - 1)); // x position on graph
-    getLoMedHi(x, loMedHi, fuzzyVals);
+    getLoMedHi(x_curr, loMedHi, fuzzyVals); // Get possible function values at x_curr
+    y_curr = getY(maxVals, loMedHi); // Get the function value at x_curr
 
-    // Take the minimum between the function caps and the function values, and then take the
-    // maximum between each function. This gives the final output function values.
-    fxn[i] = max(min(maxVals[LO], loMedHi[LO]), min(maxVals[MED], loMedHi[MED]));
-    fxn[i] = max(fxn[i], min(maxVals[HI], loMedHi[HI]));
+    // Make sure we have two y-values & two slopes, then check if the current slope
+    // matches the last slope. If it doesn't match, calculate the centroid/area and
+    // add them to the totals.
+    if (y_prev == -1) {
+      // For first time through loop, update y_0:
+      y_0 = y_curr;
+      Serial.print("y_0: "); Serial.println(y_0);
+    } else {
+      slope_curr = (y_curr - y_prev) / (dx);
+      if (slope_prev != -999 && slope_curr != slope_prev) {
+        // Area complete! Add centroid/area to totals :)
+        float base = (x_curr - dx) - x_0; // Base of trapezoid
+        float a; // Larger side of trapezoid
+        float b; // Smaller side of trapezoid
+        //       /|
+        //      / |
+        // b-> |  | <-a  (a > b)
+        //     |__|
+        //      dx
+        // If right value is greater than left value, a = right value & b = left value:
+        if ( (y_prev - y_0) > 0) {
+          a = y_prev;
+          b = y_0;
+        } else {
+          a = y_0;
+          b = y_prev;
+        }
+        // Find the area based on the area of a trapezoid:
+        float area = base * b + base * (a - b) / 2;
+        totalArea += area;
+        // Find the centroid based on the centroid of a trapezoid + left x position:
+        totalMass += area * ((1.0 / 3.0) * base * (b + 2.0 * a) / (a + b) + x_0);
+
+        // Update x_0 & y_0:
+        x_0 = x_curr - dx; Serial.print("x_0: "); Serial.println(x_0);
+        y_0 = y_prev; Serial.print("y_0: "); Serial.println(y_0);
+      }
+    }
+
+    // Increment x:
+    x_curr += dx;
+    // Update y_prev & slope_prev:
+    y_prev = y_curr;
+    slope_prev = slope_curr;
   }
-}
 
-/* This method takes an array of function values, an integer index for that array, the x
- * position at that index, and the distance between two points on the output graph (dx).
- * It then modifies a given array to contain [area, centroid] of the graph to the right
- * of the given index. */
-void getAreaAndCentroid(float* areaAndCentroid, int i, float x, float dx, float* fxnPts) {
-  //       /|
-  //      / |
-  // b-> |  | <-a  (a > b)
-  //     |__|
-  //      dx
-  // If right value is greater than left value, a = right value & b = left value:
-  float a;
-  float b;
-  if (fxnPts[i + 1] - fxnPts[i] > 0) {
-    a = fxnPts[i + 1];
-    b = fxnPts[i];
+  // Add last area to totals:
+  float base = x_curr - x_0; // Base of trapezoid
+  float a; // Larger side of trapezoid
+  float b; // Smaller side of trapezoid
+  if (y_curr - y_0 > 0) {
+    a = y_curr;
+    b = y_0;
   } else {
-    a = fxnPts[i];
-    b = fxnPts[i + 1];
+    a = y_0;
+    b = y_curr;
   }
   // Find the area based on the area of a trapezoid:
-  areaAndCentroid[0] = dx * b + dx * (a - b) / 2;
+  float area = base * b + base * (a - b) / 2;
+  totalArea += area;
   // Find the centroid based on the centroid of a trapezoid + left x position:
-  areaAndCentroid[1] = ((1.0 / 3.0) * dx * (b + 2.0 * a) / (a + b)) + (x);
-
-
-  //Serial.print("Area: "); Serial.println(areaAndCentroid[0]);
-  //Serial.print("                 Centroid: "); Serial.println(areaAndCentroid[1]);
+  totalMass += area * ((1.0 / 3.0) * base * (b + 2.0 * a) / (a + b) + x_0);
+  return totalMass / totalArea;
 }
+
+
+/* Take the minimum between the function caps and the function values, and then take the
+ * maximum between each function. This gives the final output function values. */
+float getY(float* maxVals, float* loMedHi) {
+  float y = max(min(maxVals[LO], loMedHi[LO]), min(maxVals[MED], loMedHi[MED]));
+  y = max(y, min(maxVals[HI], loMedHi[HI]));
+  return y;
+}
+
