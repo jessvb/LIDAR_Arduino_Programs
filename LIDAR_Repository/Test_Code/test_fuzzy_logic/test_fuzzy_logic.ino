@@ -24,8 +24,8 @@ void setup() {
 
 
 
-  float currVel = 10; // in meters/sec
-  float currDist = 15; // in meters
+  float currVel = 1.2; // in meters/sec
+  float currDist = 40; // in meters
 
   float velValues[3]; // [SLOW, MED, FAST]
   getLoMedHi(currVel, velValues, &VEL);
@@ -47,7 +47,9 @@ void loop() {
  * and an array, it will modify the array to the correct [SLOW, MED,
  * FAST] values */
 void getLoMedHi(float currValue, float* loMedHi, fuzzy_values_t* fuzzyVals) {
-  if (currValue >= fuzzyVals->minVal && currValue < fuzzyVals->medVal) {
+  // Check which area the current value sits in:
+  // (Note: float comparison -> subtract/add 0.001 just in case!)
+  if (currValue >= (fuzzyVals->minVal - 0.001) && currValue < fuzzyVals->medVal) {
     // low function -> lo value
     loMedHi[LO] = -1 / (fuzzyVals->medVal) * currValue + 1; // y = -1/run*x + 1
     // 1 - lo value -> med value
@@ -127,7 +129,8 @@ float defuzzification(float* maxVals, fuzzy_values_t* fuzzyVals) {
       Serial.print("y_0: "); Serial.println(y_0);
     } else {
       slope_curr = (y_curr - y_prev) / (dx);
-      if (slope_prev != -999 && slope_curr != slope_prev) {
+      // Make sure we have 2 slopes & they aren't equal (floating pt comparison)
+      if (slope_prev != -999 && abs(slope_curr - slope_prev) > 0.001 ) {
         // Area complete! Add centroid/area to totals :)
         float base = (x_curr - dx) - x_0; // Base of trapezoid
         float a; // Larger side of trapezoid
