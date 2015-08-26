@@ -13,7 +13,7 @@ XYChart velChart;              // An x-y graph for velocities
 ArrayList<PVector> velocities;  // List of x & y values (time and velocity)
 XYChart distChart;             // An x-y graph for distances
 ArrayList<PVector> distances;  // List of x & y values (time and distance)
-float initialTime = System.nanoTime()/1E9; // Time when program starts
+double initialTime = System.nanoTime()/1E9; // Time when program starts
 final int POINTS_ON_SCREEN = 150;  // The maximum number of data points on screen
 
 void setup () {
@@ -62,7 +62,7 @@ void setup () {
   println(Serial.list()); // The first listed COM will be in [0], second COM in [1] etc.
 
   // Open the serial array bucket that the Arduino is on (for ex: COM9 might be [1]):
-  myPort = new Serial(this, Serial.list()[1], 9600);
+  myPort = new Serial(this, Serial.list()[0], 9600);
 
   // don't generate a serialEvent() unless you get a newline character:
   myPort.bufferUntil('\n');
@@ -73,42 +73,46 @@ void draw () {
 }
 
 void serialEvent (Serial myPort) {
-  //---------- GET DATA FROM ARDUINO ----------//
-  // get the ASCII string that contains a velocity and distance:
-  String str = myPort.readStringUntil('\n'); // will be in this form: 1.1V0.59D
+  try {
+    //---------- GET DATA FROM ARDUINO ----------//
+    // get the ASCII string that contains a velocity and distance:
+    String str = myPort.readStringUntil('\n'); // will be in this form: 1.1V0.59D
 
-  if (str != null) {
-    // trim off any whitespace:
-    str = trim(str);
-    // parse for the velocity and the distance:
-    float velocity = float(str.substring(0, str.indexOf('V')));
-    float distance = float(str.substring(str.indexOf('V')+1, str.length()-2));
-    distance = distance/100; // distance in meters
+    if (str != null) {
+      // trim off any whitespace:
+      str = trim(str);
+      // parse for the velocity and the distance:
+      float velocity = float(str.substring(0, str.indexOf('V')));
+      float distance = float(str.substring(str.indexOf('V')+1, str.length()-2));
+      distance = distance/100; // distance in meters
 
 
-    //---------- ADD NEW VELOCITY & DISTANCE TO LISTS ----------//
-    float time = System.nanoTime()/1E9 - initialTime;
-    velocities.add(new PVector(time, velocity));
-    distances.add(new PVector(time, distance));
-    if (velocities.size() > POINTS_ON_SCREEN) { // Remove values from list if more than max
-      velocities.remove(0);
-      distances.remove(0);
+      //---------- ADD NEW VELOCITY & DISTANCE TO LISTS ----------//
+      double time = System.nanoTime()/1E9 - initialTime;
+      velocities.add(new PVector((float)time, velocity));
+      distances.add(new PVector((float)time, distance));
+      if (velocities.size() > POINTS_ON_SCREEN) { // Remove values from list if more than max
+        velocities.remove(0);
+        distances.remove(0);
+      }
+
+
+      //---------- DRAW GRAPH ----------//
+      background(255); // set background colour to white
+      textSize(11); // For the axis lables
+      velChart.setData(velocities); // set the chart data with the arrayList
+      velChart.draw(15, 15, width-830, height-30);
+      distChart.setData(distances); // set the chart data with the arrayList
+      distChart.draw(815, 15, width-830, height-30);
+
+      // draw title over the graph (after graph has been drawn):
+      fill(120);
+      textSize(20);
+      text("LIDAR Velocity Readings", 90, 50);
+      text("LIDAR Distance Readings", 90+800, 50);
     }
-
-
-    //---------- DRAW GRAPH ----------//
-    background(255); // set background colour to white
-    textSize(11); // For the axis lables
-    velChart.setData(velocities); // set the chart data with the arrayList
-    velChart.draw(15, 15, width-830, height-30);
-    distChart.setData(distances); // set the chart data with the arrayList
-    distChart.draw(815, 15, width-830, height-30);
-
-    // draw title over the graph (after graph has been drawn):
-    fill(120);
-    textSize(20);
-    text("LIDAR Velocity Readings", 90, 50);
-    text("LIDAR Distance Readings", 90+800, 50); 
+  }
+  catch(Exception e) {
+    println("Exception:" + e.toString());
   }
 }
-
