@@ -7,7 +7,7 @@ XYChart velChart;
 XYChart distChart;
 ArrayList<PVector> velocities;
 ArrayList<PVector> distances;
-float firstTime = System.nanoTime()/1E9;
+double firstTime = System.nanoTime()/1E9;
 
 // Loads data into the chart and customises its appearance.
 void setup()
@@ -87,8 +87,8 @@ void draw()
     println(ex);
   }
 
-  velocities.add(new PVector(System.nanoTime()/1E9 - firstTime, 10));
-  distances.add(new PVector(System.nanoTime()/1E9 - firstTime, 5));
+  velocities.add(new PVector((float)(System.nanoTime()/1E9 - firstTime), 10));
+  distances.add(new PVector((float)(System.nanoTime()/1E9 - firstTime), 5));
   if (velocities.size() > 50) {
     velocities.remove(0);
     distances.remove(0);
@@ -96,4 +96,3 @@ void draw()
   velChart.setData(velocities);
   distChart.setData(distances);
 }
-
