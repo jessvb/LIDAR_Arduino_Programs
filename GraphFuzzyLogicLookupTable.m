@@ -1,0 +1,124 @@
+close all; clear all; clc;
+
+% FUZZY BIKE FIS:
+fuzzyBike = struct;
+fuzzyBike.name = 'fuzzyBike';
+fuzzyBike.type = 'mamdani';
+fuzzyBike.andMethod = 'min';
+fuzzyBike.orMethod = 'max';
+fuzzyBike.defuzzMethod = 'centroid';
+fuzzyBike.impMethod = 'min';
+fuzzyBike.aggMethod = 'max';
+fuzzyBike.input = struct;
+fuzzyBike.input(1).name = 'Velocity';
+fuzzyBike.input(1).range = [0 12];
+fuzzyBike.input(1).mf = struct;
+fuzzyBike.input(1).mf(1).name = 'Slow';
+fuzzyBike.input(1).mf(1).type = 'gaussmf';
+fuzzyBike.input(1).mf(1).params = [2.5 0];
+fuzzyBike.input(1).mf(2).name = 'Med';
+fuzzyBike.input(1).mf(2).type = 'gaussmf';
+fuzzyBike.input(1).mf(2).params = [2.5 6];
+fuzzyBike.input(1).mf(3).name = 'Fast';
+fuzzyBike.input(1).mf(3).type = 'gaussmf';
+fuzzyBike.input(1).mf(3).params = [2.5 12];
+fuzzyBike.input(2).name = 'Distance';
+fuzzyBike.input(2).range = [0 40];
+fuzzyBike.input(2).mf = struct;
+fuzzyBike.input(2).mf(1).name = 'Close';
+fuzzyBike.input(2).mf(1).type = 'gaussmf';
+fuzzyBike.input(2).mf(1).params = [8.5 0];
+fuzzyBike.input(2).mf(2).name = 'Med';
+fuzzyBike.input(2).mf(2).type = 'gaussmf';
+fuzzyBike.input(2).mf(2).params = [8.5 20];
+fuzzyBike.input(2).mf(3).name = 'Far';
+fuzzyBike.input(2).mf(3).type = 'gaussmf';
+fuzzyBike.input(2).mf(3).params = [8.5 40];
+fuzzyBike.output = struct;
+fuzzyBike.output.name = 'PWM';
+fuzzyBike.output.range = [0 255];
+fuzzyBike.output.mf = struct;
+fuzzyBike.output.mf(1).name = 'Low';
+fuzzyBike.output.mf(1).type = 'trimf';
+fuzzyBike.output.mf(1).params = [-127.5 0 127.5];
+fuzzyBike.output.mf(2).name = 'Med';
+fuzzyBike.output.mf(2).type = 'trimf';
+fuzzyBike.output.mf(2).params = [0 127.5 255];
+fuzzyBike.output.mf(3).name = 'High';
+fuzzyBike.output.mf(3).type = 'trimf';
+fuzzyBike.output.mf(3).params = [127.5 255 382.5];
+fuzzyBike.rule = struct;
+fuzzyBike.rule(1).antecedent = [1 1];
+fuzzyBike.rule(1).consequent = 2;
+fuzzyBike.rule(1).weight = 1;
+fuzzyBike.rule(1).connection = 1;
+fuzzyBike.rule(2).antecedent = [1 2];
+fuzzyBike.rule(2).consequent = 1;
+fuzzyBike.rule(2).weight = 1;
+fuzzyBike.rule(2).connection = 1;
+fuzzyBike.rule(3).antecedent = [1 3];
+fuzzyBike.rule(3).consequent = 1;
+fuzzyBike.rule(3).weight = 1;
+fuzzyBike.rule(3).connection = 1;
+fuzzyBike.rule(4).antecedent = [2 1];
+fuzzyBike.rule(4).consequent = 3;
+fuzzyBike.rule(4).weight = 1;
+fuzzyBike.rule(4).connection = 1;
+fuzzyBike.rule(5).antecedent = [2 2];
+fuzzyBike.rule(5).consequent = 2;
+fuzzyBike.rule(5).weight = 1;
+fuzzyBike.rule(5).connection = 1;
+fuzzyBike.rule(6).antecedent = [2 3];
+fuzzyBike.rule(6).consequent = 1;
+fuzzyBike.rule(6).weight = 1;
+fuzzyBike.rule(6).connection = 1;
+fuzzyBike.rule(7).antecedent = [3 1];
+fuzzyBike.rule(7).consequent = 3;
+fuzzyBike.rule(7).weight = 1;
+fuzzyBike.rule(7).connection = 1;
+fuzzyBike.rule(8).antecedent = [3 2];
+fuzzyBike.rule(8).consequent = 3;
+fuzzyBike.rule(8).weight = 1;
+fuzzyBike.rule(8).connection = 1;
+fuzzyBike.rule(9).antecedent = [3 3];
+fuzzyBike.rule(9).consequent = 2;
+fuzzyBike.rule(9).weight = 1;
+fuzzyBike.rule(9).connection = 1;
+% END FUZZY BIKE FIS
+
+
+
+%FO = zeros(40501, 3, 10); % Final Output stores all output sets
+figure(1); % figure with figure handle '1'
+hold on;
+count = 0;
+% Loop through gradients of input velocity/distance
+for j = 0.2:0.1:0.2
+    v = 0:j:10; % velocity from 0 to 10m/s
+    d = 0:j:40; % distance from 0 to 40m
+    
+    % Create an array of all possible combinations of v & d:
+    [I1,I2] = meshgrid(v,d);
+    I = [I1(:), I2(:)];
+    
+    O = zeros(length(I),3); % Output from fuzzy logic -> [v,d,out]
+    
+    % Loop through each combination of v & d and get output:
+    for k = 1:length(I)
+        y = evalfis(I(k,:), fuzzyBike); % Single output from v & d
+        O(k,:) = [I(k,:),y]; % Put single output into the output array
+    end
+    
+    % Save output set into Final Output array
+    %FO(:,:,count)
+    
+    % Plot the output function for 5 seconds
+    %plot3(O(:,1),O(:,2),O(:,3)); % x = v, y = d, z = output
+    %hold(5);
+    xx=vec2mat(O(:,1),length(d));
+    yy=vec2mat(O(:,2),length(d));
+    zz=vec2mat(O(:,3),length(d));
+    surfc(xx,yy,zz);
+    
+    count = count + 1;
+end
