@@ -32,7 +32,7 @@ const int motorPinRight = 6; // PWM pin for the right motor
 const int PWM_MIN = 108; // The lowest possible number sent to the motorPins (motor doesn't spin here)
 const int PWM_MAX = 255; // The highest possible number sent to the motorPins
 const float VEL_MIN = 0.3; // The lowest possible velocity required to send voltage to the motorPin
-const float VEL_MAX = 3; // The velocity that maxes out the voltage sent to the motorPin
+const float VEL_MAX = 10; // The velocity that maxes out the voltage sent to the motorPin
 
 const int ultraPinRight = 3; // interrupt input for the right ultrasonic -> int.0
 const int LEDPinRight = 7; // PW output for the right LED
@@ -103,8 +103,8 @@ void loop() {
 
 
     //---------- ADJUST MOTOR SPEED ----------//
-    writeMotorSpeed (motorPinLeft, avgVel);
-    writeMotorSpeed (motorPinRight, avgVel);
+    writeMotorSpeed (motorPinLeft, avgVel, avgDist);
+    writeMotorSpeed (motorPinRight, avgVel, avgDist);
 
     counter = 0; // Reset the counter for taking averages
     before_avg = now_avg; // Update the previous time for the next loop
@@ -135,14 +135,17 @@ float takeAverage (float total, int counter) {
   return total / ((float)counter);
 }
 
-/* Changes the motor speed based on the velocity provided */
-void writeMotorSpeed (int motorPin, float velocity) {
+/* Changes the motor speed based on velocity and distance according to a fuzzy logic
+ * approximation function. */
+void writeMotorSpeed (int motorPin, float velocity, float distance) {
   if (velocity < VEL_MIN) { // Velocity less than the minimum
     analogWrite(motorPin, 0); // Bottomed out
   } else if (velocity > VEL_MAX) { // Velocity more than the maximum
     analogWrite(motorPin, 255); // Maxed out
   } else {
-    analogWrite(motorPin, map(velocity, VEL_MIN, VEL_MAX, PWM_MIN, PWM_MAX)); // Within range
+    // Within range, write fuzzy function:
+    float fuzz = (sin(velocity / 20.0 * PI) - sin(distance / 80.0 * PI) + 1.0) * 77.5 + 100.0;
+    analogWrite(motorPin, fuzz);
   }
 }
 
