@@ -15,21 +15,26 @@ const int RULES[3][3] = {{MED, LO, LO}, {HI, MED, LO}, {HI, HI, MED}};
 
 void setup() {
   Serial.begin(9600); //Opens serial connection at 9600bps.
+  float initTime = millis();
 
-  float currVel = 1.2; // in meters/sec
-  float currDist = 40; // in meters
+  int i = 0;
+  for (i = 0; i < 100; i++) {
+    float currVel = 5.0 - i / 20.0; // in meters/sec
+    float currDist = i / 100.0 * 39.9; // in meters
 
-  float velValues[3]; // [SLOW, MED, FAST]
-  getLoMedHi(currVel, velValues, &VEL);
+    float velValues[3]; // [SLOW, MED, FAST]
+    getLoMedHi(currVel, velValues, &VEL);
 
-  float distValues[3]; // [SLOW, MED, FAST]
-  getLoMedHi(currDist, distValues, &DIST);
+    float distValues[3]; // [SLOW, MED, FAST]
+    getLoMedHi(currDist, distValues, &DIST);
 
-  float pwmMembership[3]; // [LO, MED, HI]
-  infer(velValues, distValues, pwmMembership);
+    float pwmMembership[3]; // [LO, MED, HI]
+    infer(velValues, distValues, pwmMembership);
 
-  float finalPWM = defuzzification(pwmMembership, &_PWM);
-  Serial.print("Final PWM: "); Serial.println(finalPWM);
+    float finalPWM = defuzzification(pwmMembership, &_PWM);
+    Serial.print("Final PWM: "); Serial.println(finalPWM);
+  }
+  Serial.print("Hz: "); Serial.println(100.0 / ((millis() - initTime) / 1000.0));
 }
 
 void loop() {
