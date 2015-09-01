@@ -1,7 +1,7 @@
 close all; clear all; clc;
 % Fuzzy System:
 tskFuzzy = struct;
-tskFuzzy.name = 'fuzzy_bike_sug';
+tskFuzzy.name = 'tskFuzzy';
 tskFuzzy.type = 'sugeno';
 tskFuzzy.andMethod = 'min';
 tskFuzzy.orMethod = 'max';
@@ -9,22 +9,22 @@ tskFuzzy.defuzzMethod = 'wtaver';
 tskFuzzy.impMethod = 'prod';
 tskFuzzy.aggMethod = 'sum';
 tskFuzzy.input = struct;
-tskFuzzy.input(1).name = 'Velocity';
+tskFuzzy.input(1).name = 'Velocity(m/s)';
 tskFuzzy.input(1).range = [0 10];
 tskFuzzy.input(1).mf = struct;
 tskFuzzy.input(1).mf(1).name = 'Slow';
 tskFuzzy.input(1).mf(1).type = 'gaussmf';
 tskFuzzy.input(1).mf(1).params = ...
-  [2.083 0];
+  [2.8 0];
 tskFuzzy.input(1).mf(2).name = 'Med';
 tskFuzzy.input(1).mf(2).type = 'gaussmf';
 tskFuzzy.input(1).mf(2).params = ...
-  [2.083 5];
+  [2.8 5];
 tskFuzzy.input(1).mf(3).name = 'Fast';
 tskFuzzy.input(1).mf(3).type = 'gaussmf';
 tskFuzzy.input(1).mf(3).params = ...
-  [2.083 10];
-tskFuzzy.input(2).name = 'Distance';
+  [2.8 10];
+tskFuzzy.input(2).name = 'Distance(m)';
 tskFuzzy.input(2).range = [0 40];
 tskFuzzy.input(2).mf = struct;
 tskFuzzy.input(2).mf(1).name = 'Close';
@@ -40,21 +40,21 @@ tskFuzzy.input(2).mf(3).type = 'gaussmf';
 tskFuzzy.input(2).mf(3).params = ...
   [8.5 40];
 tskFuzzy.output = struct;
-tskFuzzy.output.name = 'PWM';
-tskFuzzy.output.range = [0 255];
+tskFuzzy.output.name = 'PWM(%)';
+tskFuzzy.output.range = [0 1];
 tskFuzzy.output.mf = struct;
 tskFuzzy.output.mf(1).name = 'Low';
 tskFuzzy.output.mf(1).type = 'linear';
 tskFuzzy.output.mf(1).params = ...
-  [0 0 41.65];
+  [0 0 0];
 tskFuzzy.output.mf(2).name = 'Med';
 tskFuzzy.output.mf(2).type = 'linear';
 tskFuzzy.output.mf(2).params = ...
-  [0 0 127.5];
+  [0 0 0.5];
 tskFuzzy.output.mf(3).name = 'High';
 tskFuzzy.output.mf(3).type = 'linear';
 tskFuzzy.output.mf(3).params = ...
-  [0 0 255];
+  [0 0 1];
 tskFuzzy.rule = struct;
 tskFuzzy.rule(1).antecedent = ...
   [1 1];
@@ -115,7 +115,7 @@ for i = 1:L
     i1 = I1(i);
     i2 = I2(i);
     % Sin approximation normalized & multiplied by 255 (PWM):
-    f = (((- sin(i1/80*pi)) + (sin(i2/20*pi))) + 1)/2*255;
+    f = (((- sin(i1/80*pi)) + (sin(i2/20*pi))) + 1)/2;
     fxnOut(i) = f;
     % Fuzzy logic:
     fuzzOut(i) = evalfis([i2,i1], tskFuzzy);
@@ -130,9 +130,9 @@ diff = (fxnOut - fuzzOut);
 sqrd = diff.^2;
 total = sum(sqrd(:));
 rmsd = sqrt(total/L);
-fprintf('+/- %f %% \n', rmsd/255);
+fprintf('+/- %f %% \n', rmsd/1);
 
 
 % Plot differences (error):
 figure;
-surfc(I2,I1,sqrd);
+surfc(I2,I1,diff);

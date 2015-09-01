@@ -1,7 +1,7 @@
 close all; clear all; clc;
 % Fuzzy System:
 tskFuzzy = struct;
-tskFuzzy.name = 'fuzzy_bike_sug';
+tskFuzzy.name = 'tskFuzzy';
 tskFuzzy.type = 'sugeno';
 tskFuzzy.andMethod = 'min';
 tskFuzzy.orMethod = 'max';
